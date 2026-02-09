@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 
 # --- SOZLAMALAR ---
-TOKEN = "8237760389:AAFEMm5nBDzU5YPQnvR5OpCyBXpe5Ya-__o"  # BotFather'dan olingan
+TOKEN = "vvvvvv"  # BotFather'dan olingan
 CHAT_ID = "7325327724"  # userinfobot'dan olingan
 # Siz qiziqqan "o'lja" domenlar ro'yxati
 TARGETS = ["4w.uz", "70.uz", "k3.uz", "v2.uz"] 
