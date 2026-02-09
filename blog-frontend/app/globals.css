@@ -1,0 +1,70 @@
+
+@import "tailwindcss";
+
+/* Design tokens: light/dark palettes */
+:root {
+  --bg: #ffffff;
+  --fg: #0f1720;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --card: #ffffff;
+  --nav-bg: #0f1720;
+  --nav-fg: #ffffff;
+  --border: #e6e6e6;
+}
+
+[data-theme='dark'] {
+  --bg: #0b1220;
+  --fg: #e6eef8;
+  --muted: #9aa6b2;
+  --accent: #60a5fa;
+  --card: #071227;
+  --nav-bg: #071227;
+  --nav-fg: #e6eef8;
+  --border: #1f2937;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+/* Utility tokens for components */
+.container { max-width: 1100px; margin-left: auto; margin-right: auto; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+
+.muted { color: var(--muted); }
+
+.btn-accent { background: var(--accent); color: white; padding: 0.5rem 1rem; border-radius: 8px; }
+
+/* TipTap placeholder tweak */
+.tiptap p.is-editor-empty:first-child::before {
+  color: var(--muted);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap :focus-visible { outline: none; }
+
+/* Mobile nav panel subtle shadow */
+.mobile-nav { box-shadow: 0 6px 18px rgba(2,6,23,0.24); }
+
+/* Responsive hero utility using modern aspect-ratio */
+.hero {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: auto;
+}
+
+@media (min-width: 768px) {
+  .hero { aspect-ratio: 3 / 1; }
+}
+
+/* Editor toolbar mobile behavior */
+.editor-toolbar { display: flex; gap: 0.5rem; padding: 0.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.editor-toolbar button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
