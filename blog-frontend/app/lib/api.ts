@@ -31,7 +31,7 @@ export async function getPosts() {
  */
 export async function getPostBySlug(slug: string) {
   try {
-    const res = await fetch(`${API_BASE}/posts/${slug}`, {
+    const res = await fetch(`${API_BASE}/posts/${slug}/`, {
       next: { revalidate: 300 }, // Detal sahifasini har 5 minutda yangilash
     });
 
