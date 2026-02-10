@@ -9,7 +9,7 @@ python manage.py generate_sitemap --domain=https://example.com --output=sitemap.
 ```
 
 Defaults:
-- `--domain`: `http://localhost:3000`
+- `--domain`: `https://zuuu.uz`
 - `--output`: `./sitemap.xml`
 
 The command will also attempt to write `sitemap.xml` into `STATIC_ROOT` if configured.

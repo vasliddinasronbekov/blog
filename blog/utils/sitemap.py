@@ -9,7 +9,7 @@ except Exception:
     Post = None
 
 
-def generate_sitemap(domain='http://localhost:3000', output=None):
+def generate_sitemap(domain='https://zuuu.uz', output=None):
     domain = domain.rstrip('/')
     if output is None:
         # Default: write to frontend's public folder for static serving

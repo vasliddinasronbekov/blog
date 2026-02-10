@@ -43,7 +43,7 @@ ROOT_URLCONF = 'blog_backend.urls'
 
 # CORS sozlamalari (Frontend Next.js uchun)
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+    "https://api.zuuu.uz",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -53,7 +53,7 @@ DATABASES = {
         'NAME': 'blogdb',
         'USER': 'blogdev',
         'PASSWORD': 'SOweneedmoreandmoreMONEY',
-        'HOST': 'localhost',
+        'HOST': 'api.zuuu.uz',
         'PORT': '5432',
     }
 }

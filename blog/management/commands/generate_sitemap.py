@@ -8,7 +8,7 @@ class Command(BaseCommand):
     help = 'Generate sitemap.xml combining frontend static routes and backend Post entries'
 
     def add_arguments(self, parser):
-        parser.add_argument('--domain', default='http://localhost:3000', help='Site domain, e.g. https://example.com')
+        parser.add_argument('--domain', default='https://zuuu.uz', help='Site domain, e.g. https://example.com')
         # Default to frontend public folder (will be set in generate_sitemap if None)
         parser.add_argument('--output', default=None, help='Output path for sitemap.xml (default: blog-frontend/public/sitemap.xml)')
 

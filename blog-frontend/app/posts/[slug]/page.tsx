@@ -39,7 +39,7 @@ export default async function PostPage(
   if (!post) notFound();
 
   const related: any[] = [];
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://api.zuuu.uz';
 
   return (
     <main className="container mx-auto px-4 py-12">

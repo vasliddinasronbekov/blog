@@ -36,7 +36,7 @@ pip install Pillow
   "id": 1,
   "title": "My Post",
   "featured_image": "posts/my-image.jpg",
-  "featured_image_url": "http://localhost:8000/media/posts/my-image.jpg",
+  "featured_image_url": "https://api.zuuu.uz:8000/media/posts/my-image.jpg",
   "seo_title": "SEO Title",
   "seo_description": "Meta description"
 }
