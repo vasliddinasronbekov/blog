@@ -27,6 +27,12 @@
     return checked ? checked.value : 'manual';
   }
 
+  function setCheckedMode(radios, mode) {
+    radios.forEach(function (radio) {
+      radio.checked = radio.value === mode;
+    });
+  }
+
   function renderTabs(modeContainer) {
     var wrapper = document.createElement('div');
     wrapper.className = 'post-mode-tabs';
@@ -47,14 +53,11 @@
     wrapper.appendChild(aiBtn);
 
     modeContainer.parentNode.insertBefore(wrapper, modeContainer);
-
     return wrapper;
   }
 
   function setMode(mode, radios, tabs, aiFieldsets, manualFieldsets) {
-    radios.forEach(function (radio) {
-      radio.checked = radio.value === mode;
-    });
+    setCheckedMode(radios, mode);
 
     qsa('.post-mode-tab', tabs).forEach(function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
@@ -83,7 +86,7 @@
     field.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function initGenerateAction() {
+  function initGenerateAction(radios, tabs, aiFieldsets, manualFieldsets) {
     var button = qs('#ai-generate-btn');
     var status = qs('#ai-generate-status');
     if (!button) return;
@@ -99,6 +102,7 @@
         return;
       }
 
+      setMode('ai', radios, tabs, aiFieldsets, manualFieldsets);
       button.disabled = true;
       if (status) status.textContent = 'Generating...';
 
@@ -115,12 +119,17 @@
         }),
       })
         .then(function (response) {
-          return response.json().then(function (data) {
-            if (!response.ok) {
-              throw new Error(data.error || 'Generation failed.');
-            }
-            return data;
-          });
+          return response
+            .json()
+            .catch(function () {
+              return {};
+            })
+            .then(function (data) {
+              if (!response.ok) {
+                throw new Error(data.error || 'Generation failed.');
+              }
+              return data;
+            });
         })
         .then(function (data) {
           setValueAndTrigger('id_title', data.title || '');
@@ -147,11 +156,7 @@
     if (!radios.length) return;
 
     var aiTopicRow = findFieldRow('ai_topic');
-    var manualRows = [
-      findFieldRow('title'),
-      findFieldRow('content'),
-      findFieldRow('seo_title'),
-    ].filter(Boolean);
+    var manualRows = [findFieldRow('title'), findFieldRow('content'), findFieldRow('seo_title')].filter(Boolean);
 
     if (!aiTopicRow || !manualRows.length) return;
 
@@ -168,9 +173,9 @@
     modeRow.classList.add('mode-radio-hidden');
 
     tabs.addEventListener('click', function (e) {
-      var button = e.target.closest('.post-mode-tab');
-      if (!button) return;
-      setMode(button.getAttribute('data-mode'), radios, tabs, [aiFieldset], manualFieldsets);
+      var tabBtn = e.target.closest('.post-mode-tab');
+      if (!tabBtn) return;
+      setMode(tabBtn.getAttribute('data-mode'), radios, tabs, [aiFieldset], manualFieldsets);
     });
 
     radios.forEach(function (radio) {
@@ -180,7 +185,7 @@
     });
 
     setMode(getModeValue(), radios, tabs, [aiFieldset], manualFieldsets);
-    initGenerateAction();
+    initGenerateAction(radios, tabs, [aiFieldset], manualFieldsets);
   }
 
   if (document.readyState === 'loading') {

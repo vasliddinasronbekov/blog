@@ -54,7 +54,7 @@ class PostAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Keep manual mode behavior via clean(), while allowing AI mode to omit these inputs.
+        # Keep manual requirements in clean(), not as global required attributes.
         self.fields["title"].required = False
         self.fields["content"].required = False
         self._ai_generated_post: AIGeneratedPost | None = None
@@ -63,10 +63,7 @@ class PostAdminForm(forms.ModelForm):
         cleaned_data = super().clean()
         mode = cleaned_data.get("generation_mode", self.GENERATION_MODE_MANUAL)
         ai_topic = (cleaned_data.get("ai_topic") or "").strip()
-        has_generated_payload = bool(
-            (cleaned_data.get("title") or "").strip()
-            and (cleaned_data.get("content") or "").strip()
-        )
+        has_manual_payload = bool((cleaned_data.get("title") or "").strip() and (cleaned_data.get("content") or "").strip())
 
         if mode == self.GENERATION_MODE_MANUAL:
             if not (cleaned_data.get("title") or "").strip():
@@ -75,8 +72,8 @@ class PostAdminForm(forms.ModelForm):
                 self.add_error("content", "Content is required in manual mode.")
             return cleaned_data
 
-        # If fields are already filled (e.g. via Generate button), do not call AI again.
-        if has_generated_payload:
+        # AI mode with fields already filled (button-generated or manually edited).
+        if has_manual_payload:
             return cleaned_data
 
         if not ai_topic:
@@ -158,11 +155,17 @@ class PostAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ('created_at', 'updated_at', 'ai_generate_action')
+
     class Media:
         css = {
             "all": ("blog/admin/post_mode_tabs.css",),
         }
         js = ("blog/admin/post_mode_tabs.js",)
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        initial.setdefault("generation_mode", PostAdminForm.GENERATION_MODE_MANUAL)
+        return initial
 
     def get_urls(self):
         urls = super().get_urls()
@@ -202,6 +205,8 @@ class PostAdmin(admin.ModelAdmin):
 
         if not topic:
             return JsonResponse({"error": "AI topic is required."}, status=400)
+        if tone and tone not in {choice[0] for choice in PostAdminForm.AI_TONE_CHOICES}:
+            return JsonResponse({"error": "Invalid AI tone."}, status=400)
 
         try:
             generated = generate_post_with_ai(topic=topic, keywords=keywords, tone=tone)
