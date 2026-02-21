@@ -10,55 +10,59 @@ export default async function Home() {
   let error = null;
 
   try {
-    // Backenddan ma'lumot olish
     const data = await getPosts();
-    // Django DRF pagination ishlatsa, natija data.results ichida bo'ladi
     posts = data.results || data; 
   } catch (err) {
     error = (err as Error).message;
   }
 
   return (
-    <main className="container mx-auto px-4 py-12">
-      <div className="flex justify-between items-center mb-10">
-        <h1 className="text-4xl font-extrabold text-white-900">Soʻnggi maqolalar</h1>
-        <Link 
-          href="/create" 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition"
-        >
-          Post yaratish +
+    <main className="container mx-auto px-4 py-8 md:py-12">
+      {/* Hero Section */}
+      <section className="mb-16 glass-card p-8 md:p-12 text-center layer-3" style={{ background: 'var(--glass-light)', backdropFilter: 'blur(20px)' }}>
+        <h1 className="text-5xl md:text-6xl font-black mb-4 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+          Explore Stories
+        </h1>
+        <p className="text-lg muted mb-8 max-w-2xl mx-auto">
+          Discover insightful articles, tips, and perspectives on topics you care about.
+        </p>
+        <Link href="/create" className="btn-primary inline-block">
+          ✍️ Share Your Story
         </Link>
-      </div>
+      </section>
 
+      {/* Error State */}
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-8">
-          Xatolik yuz berdi: {error}
+        <div className="glass-card p-6 mb-8 layer-2 border-red-400/20" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
+          <p style={{ color: 'var(--accent)' }} className="font-semibold">⚠️ Error loading posts</p>
+          <p className="text-sm muted">{error}</p>
         </div>
       )}
 
-      {posts.length === 0 && !error ? (
-        <div className="text-center py-20 bg-gray-50 rounded-xl">
-          <p className="text-gray-500 text-lg">Hozircha maqolalar yoʻq.</p>
+      {/* Empty State */}
+      {posts.length === 0 && !error && (
+        <div className="glass-card p-16 text-center layer-2">
+          <p className="text-xl muted mb-4">No stories yet</p>
+          <p className="text-sm muted mb-6">Be the first to share your thoughts</p>
+          <Link href="/create" className="btn-primary inline-block">
+            Start Writing
+          </Link>
         </div>
-      ) : (
+      )}
+
+      {/* Bento Grid */}
+      {posts.length > 0 && (
         <>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="bento-grid mb-12">
             {posts.map((post: any, index: number) => (
-              <div key={post.id}>
-                <PostCard post={post} />
-                
-                {/* Show ad every 3rd post */}
-                {(index + 1) % 3 === 0 && (
-                  <div className="md:col-span-2 lg:col-span-3 py-6">
-                    <AdSenseAd placement="homepage" className="w-full" />
-                  </div>
-                )}
+              <div key={post.id} className={index === 0 ? 'bento-item-featured' : ''}>
+                <PostCard post={post} featured={index === 0} />
               </div>
             ))}
           </div>
-          
-          {/* Ad at the end */}
-          <div className="py-8 mt-8">
+
+          {/* Ad after grid */}
+          <div className="my-12">
             <AdSenseAd placement="homepage" className="w-full" />
           </div>
         </>

@@ -1,7 +1,7 @@
 
 // /media/gradientvvv/Linux/blog-app/blog-frontend/app/components/Navbar.tsx
 
- 'use client';
+'use client';
 
 import { useSession, signOut } from "next-auth/react";
 import Link from 'next/link';
@@ -67,59 +67,91 @@ export default function Navbar() {
   }, [mobileOpen]);
 
   return (
-    <nav style={{ background: 'var(--nav-bg)', color: 'var(--nav-fg)' }} className="p-4">
-      <div className="container mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="font-semibold">Blog Home</Link>
+    <nav className="sticky top-0 z-50 glass-card m-4 md:m-6" style={{ background: 'var(--glass-light)', backdropFilter: 'blur(20px)', borderRadius: '20px' }}>
+      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        {/* Logo/Brand */}
+        <div className="flex items-center gap-2">
+          <Link href="/" className="text-xl font-black tracking-tight" style={{ color: 'var(--accent)' }}>
+            ✨ Blog
+          </Link>
         </div>
 
-        {/* Desktop menu */}
-        <div className="hidden md:flex items-center gap-4">
-          <button aria-label="Toggle theme (cycle system/light/dark)" onClick={toggleTheme} className="px-3 py-1 rounded-md" style={{background:'transparent', color:'var(--nav-fg)'}}>
-            {theme === 'system' ? '🖥️' : theme === 'dark' ? '🌙' : '☀️'}
-          </button>
+        {/* Desktop Menu */}
+        <div className="hidden md:flex items-center gap-6">
+          <Link href="/" className="text-sm font-medium hover:text-accent transition">Home</Link>
+          
           {session ? (
             <>
-              <span className="muted">Hi, {session.user?.name}</span>
-              <Link href="/create">Create Post</Link>
-              <button onClick={() => signOut({ callbackUrl: '/' })}>Sign Out</button>
+              <Link href="/create" className="btn-primary">✍️ Create Post</Link>
+              <button 
+                onClick={toggleTheme} 
+                className="btn-secondary"
+                aria-label="Toggle theme"
+              >
+                {theme === 'system' ? 'Default⚙️' : theme === 'dark' ? '🌙' : '☀️'}
+              </button>
+              <button 
+                onClick={() => signOut()} 
+                className="btn-secondary"
+              >
+                Sign Out
+              </button>
             </>
           ) : (
             <>
-              <Link href="/signin">Sign In</Link>
-              <Link href="/signup">Sign Up</Link>
+              <Link href="/signin" className="btn-secondary">Sign In</Link>
+              <Link href="/signup" className="btn-primary">Sign Up</Link>
+              <button 
+                onClick={toggleTheme} 
+                className="btn-secondary"
+                aria-label="Toggle theme"
+              >
+                {theme === 'system' ? 'Default🌙' : theme === 'dark' ? '🌙' : '☀️'}
+              </button>
             </>
           )}
         </div>
 
-        {/* Mobile: menu button */}
+        {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center gap-2">
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="px-2 py-1 rounded-md" style={{background:'transparent', color:'var(--nav-fg)'}}>
-            {theme === 'system' ? '🖥️' : theme === 'dark' ? '🌙' : '☀️'}
+          <button 
+            onClick={toggleTheme} 
+            className="btn-secondary"
+            aria-label="Toggle theme"
+          >
+            {theme === 'system' ? 'Default🌙' : theme === 'dark' ? '🌙' : '☀️'}
           </button>
-          <button aria-label="Toggle menu" onClick={() => setMobileOpen(!mobileOpen)} className="px-2 py-1 rounded-md" style={{background:'transparent', color:'var(--nav-fg)'}}>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="btn-secondary"
+            aria-label="Toggle menu"
+          >
             {mobileOpen ? '✕' : '☰'}
           </button>
         </div>
       </div>
 
-      {/* Mobile panel */}
+      {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="md:hidden mt-2 mobile-nav card p-4">
-          <div className="flex flex-col gap-3">
-            {session ? (
-              <>
-                <span className="muted">Hi, {session.user?.name}</span>
-                <Link href="/create">Create Post</Link>
-                <button onClick={() => signOut({ callbackUrl: '/' })}>Sign Out</button>
-              </>
-            ) : (
-              <>
-                <Link href="/signin">Sign In</Link>
-                <Link href="/signup">Sign Up</Link>
-              </>
-            )}
-          </div>
+        <div ref={mobilePanelRef} className="md:hidden mobile-nav m-4 p-4 space-y-3 border-t" style={{ borderColor: 'var(--glass-border-light)' }}>
+          <Link href="/" className="block py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Home</Link>
+          
+          {session ? (
+            <>
+              <Link href="/create" className="block w-full btn-primary text-center" onClick={() => setMobileOpen(false)}>Create Post</Link>
+              <button 
+                onClick={() => { signOut(); setMobileOpen(false); }} 
+                className="block w-full btn-secondary"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/signin" className="block py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Sign In</Link>
+              <Link href="/signup" className="block w-full btn-primary text-center" onClick={() => setMobileOpen(false)}>Sign Up</Link>
+            </>
+          )}
         </div>
       )}
     </nav>

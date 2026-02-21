@@ -1,27 +1,65 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
-export default function PostCard({ post }: { post: any }){
+export default function PostCard({ post, featured = false }: { post: any; featured?: boolean }){
+  const cardClass = featured ? 'bento-item-featured' : '';
+  
   return (
-    <article className="group card overflow-hidden rounded-xl">
+    <article className={`glass-card overflow-hidden group layer-2 transition-all duration-300 cursor-pointer ${cardClass}`}>
+      {/* Image Container */}
       {post.featured_image && (
-        <div className="relative w-full hero">
-          <Image src={post.featured_image} alt={post.title} fill className="object-cover transition-transform group-hover:scale-105" unoptimized />
+        <div className="relative w-full h-48 overflow-hidden">
+          <Image 
+            src={post.featured_image} 
+            alt={post.title} 
+            fill 
+            className="object-cover group-hover:scale-110 transition-transform duration-500"
+            unoptimized 
+          />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </div>
       )}
 
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-1 rounded">{post.category_name || 'Umumiy'}</span>
+      {/* Content Container */}
+      <div className="p-6 flex flex-col h-full">
+        {/* Category Tag */}
+        <div className="mb-3">
+          <span className="tag" style={{ 
+            background: `var(--accent)20`,
+            color: 'var(--accent)',
+            borderColor: `var(--accent)40`
+          }}>
+            {post.category_name || 'Featured'}
+          </span>
         </div>
-        <h3 className="text-lg font-bold mb-2"><Link href={`/posts/${post.slug}`}>{post.title}</Link></h3>
-        <p className="text-sm muted line-clamp-3">{post.content}</p>
-        <div className="flex items-center justify-between mt-4">
+
+        {/* Title */}
+        <h3 className="text-lg font-bold mb-3 line-clamp-2 group-hover:text-accent transition-colors">
+          <Link href={`/posts/${post.slug}`} className="hover:underline">
+            {post.title}
+          </Link>
+        </h3>
+
+        {/* Description */}
+        <p className="text-sm muted line-clamp-2 mb-auto">
+          {post.content}
+        </p>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-4 pt-4 border-t" style={{ borderColor: 'var(--glass-border-light)' }}>
+          {/* Author */}
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold">{post.author?.[0] || 'U'}</div>
-            <span className="text-sm">{post.author || 'Muallif'}</span>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xs font-bold text-white">
+              {post.author?.[0] || 'U'}
+            </div>
+            <span className="text-xs font-medium line-clamp-1">{post.author || 'Author'}</span>
           </div>
-          <time className="text-xs muted">{new Date(post.created_at).toLocaleDateString()}</time>
+
+          {/* Date */}
+          <time className="text-xs muted">
+            {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </time>
         </div>
       </div>
     </article>

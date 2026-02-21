@@ -39,50 +39,76 @@ export default function SignIn() {
   };
 
   return (
-    <main className="container mx-auto px-4 py-12 max-w-md">
-      <Card className="rounded-lg">
-        <h1 className="text-3xl font-bold mb-4 text-center">Xush kelibsiz</h1>
+    <main className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        {/* Background blur effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 blur-3xl -z-10" />
         
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 mb-4 text-sm">
-            {error}
+        <div className="glass-card p-8 md:p-10 layer-3">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+              👋 Welcome Back
+            </h1>
+            <p className="text-muted text-sm">Sign in to your account</p>
           </div>
-        )}
+          
+          {error && (
+            <div className="glass-card p-4 mb-6 layer-2 border-red-400/20" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>⚠️ {error}</p>
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Username</label>
-            <input
-              required
-              type="text"
-              className="mt-1 w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Parol</label>
-            <input
-              required
-              type="password"
-              className="mt-1 w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <button
-            disabled={loading}
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-md transition duration-200"
-          >
-            {loading ? 'Kirilmoqda...' : 'Kirish'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-bold mb-2">Username</label>
+              <input
+                required
+                type="text"
+                className="w-full px-4 py-3 glass-card outline-none focus:ring-2 focus:ring-blue-500 transition"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                style={{ background: 'var(--glass-light)', border: '1px solid var(--glass-border-light)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-2">Password</label>
+              <input
+                required
+                type="password"
+                className="w-full px-4 py-3 glass-card outline-none focus:ring-2 focus:ring-blue-500 transition"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ background: 'var(--glass-light)', border: '1px solid var(--glass-border-light)' }}
+              />
+            </div>
+            <button
+              disabled={loading}
+              type="submit"
+              className="w-full btn-primary text-lg font-bold py-3 mt-6 layer-2 disabled:opacity-50"
+            >
+              {loading ? '⏳ Signing in...' : '🔓 Sign In'}
+            </button>
+          </form>
 
-        <p className="mt-6 text-center text-sm muted">
-          Akkountingiz yoʻqmi? <Link href="/signup" className="text-blue-600 font-semibold hover:underline">Roʻyxatdan oʻtish</Link>
-        </p>
-      </Card>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t" style={{ borderColor: 'var(--glass-border-light)' }} />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 muted" style={{ background: 'var(--bg-primary)' }}>or</span>
+            </div>
+          </div>
+          
+          <p className="text-center text-muted text-sm">
+            Don't have an account?{' '}
+            <Link href="/signup" className="font-bold" style={{ color: 'var(--accent)' }}>
+              Create one
+            </Link>
+          </p>
+        </div>
+      </div>
     </main>
   );
 }

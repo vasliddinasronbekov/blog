@@ -1,9 +1,10 @@
-import { getPostBySlug } from './../../lib/api'; // Pathni tekshiring
+import { getPostBySlug } from './../../lib/api';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DOMPurify from 'isomorphic-dompurify';
 import AdSenseAd from '../../components/AdSenseAd';
+import ShareButtons from '../../components/ShareButtons';
 
 // Metadata qo'shish (SEO uchun juda muhim)
 export async function generateMetadata(
@@ -87,12 +88,12 @@ export default async function PostPage(
           </div>
 
           <div className="relative">
-            <aside className="hidden lg:block sticky top-28 float-left mr-6">
-              <div className="flex flex-col items-start gap-3 text-sm">
-                <a className="text-muted hover:text-accent" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(siteUrl + '/posts/' + post.slug)}`} aria-label="Share on Facebook">Share</a>
-                <a className="text-muted hover:text-accent" href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(siteUrl + '/posts/' + post.slug)}&text=${encodeURIComponent(post.title)}`} aria-label="Share on Twitter">Tweet</a>
+            {/* Floating Share Buttons - Fixed on side */}
+            <div className="hidden lg:block fixed left-8 top-1/2 transform -translate-y-1/2 z-40">
+              <div className="glass-card p-3 layer-2" style={{ background: 'var(--glass-light)', backdropFilter: 'blur(20px)', borderRadius: '12px' }}>
+                <ShareButtons url={`/posts/${post.slug}`} title={post.title} />
               </div>
-            </aside>
+            </div>
 
             <div className="prose prose-blue prose-lg max-w-none text-current">
               <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
