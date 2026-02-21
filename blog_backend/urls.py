@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
-from blog.views import CategoryViewSet, PostViewSet, CommentViewSet, RegisterView, AdSenseSettingsView
+from blog.views import CategoryViewSet, PostViewSet, CommentViewSet, RegisterView, AdSenseSettingsView, sitemap_xml
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -17,6 +17,7 @@ router.register(r'comments', CommentViewSet, basename='comment')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
     
     # API endpoints
     path('api/', include(router.urls)),

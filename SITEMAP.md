@@ -1,6 +1,12 @@
 # Sitemap generation
 
-Run the Django management command to generate `sitemap.xml` for the project. The command scans `blog-frontend/app` for static pages and includes `Post` entries from the `blog` app.
+The project now serves sitemap dynamically from backend at:
+
+`https://api.zuuu.uz/sitemap.xml`
+
+Frontend route `/sitemap.xml` proxies backend response, so it is always fresh.
+
+The Django management command is still available if you want to export a file copy. It scans `blog-frontend/app` for static pages and includes `Post` entries from the `blog` app.
 
 Usage:
 
@@ -10,6 +16,6 @@ python manage.py generate_sitemap --domain=https://example.com --output=sitemap.
 
 Defaults:
 - `--domain`: `https://zuuu.uz`
-- `--output`: `./sitemap.xml`
+- `--output`: `MEDIA_ROOT/sitemap.xml`
 
 The command will also attempt to write `sitemap.xml` into `STATIC_ROOT` if configured.

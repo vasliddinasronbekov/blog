@@ -1,6 +1,4 @@
 from django.core.management.base import BaseCommand
-from django.conf import settings
-from pathlib import Path
 from blog.utils.sitemap import generate_sitemap
 
 
@@ -9,8 +7,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--domain', default='https://zuuu.uz', help='Site domain, e.g. https://example.com')
-        # Default to frontend public folder (will be set in generate_sitemap if None)
-        parser.add_argument('--output', default=None, help='Output path for sitemap.xml (default: blog-frontend/public/sitemap.xml)')
+        # Default output is MEDIA_ROOT/sitemap.xml when not provided.
+        parser.add_argument('--output', default=None, help='Output path for sitemap.xml (default: MEDIA_ROOT/sitemap.xml)')
 
     def handle(self, *args, **options):
         domain = options['domain']

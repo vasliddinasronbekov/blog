@@ -1,8 +1,11 @@
 from rest_framework import viewsets, filters, permissions, generics
 from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
+from django.http import HttpResponse
 from .models import Category, Post, Comment, AdSenseSettings
 from .serializers import CategorySerializer, PostSerializer, CommentSerializer, UserSerializer, AdSenseSettingsSerializer
 from django.contrib.auth.models import User
+from .utils.sitemap import build_sitemap_xml
 
 class PostViewSet(viewsets.ModelViewSet):
     # Optimizatsiya: author va category-ni bitta so'rovda oladi, commentlarni keshlaydi
@@ -47,3 +50,9 @@ class AdSenseSettingsView(generics.RetrieveAPIView):
     
     def get_object(self):
         return AdSenseSettings.get_settings()
+
+
+def sitemap_xml(request):
+    domain = getattr(settings, "SITE_URL", "https://zuuu.uz")
+    xml_content = build_sitemap_xml(domain=domain)
+    return HttpResponse(xml_content, content_type="application/xml")
