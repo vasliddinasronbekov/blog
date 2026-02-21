@@ -86,25 +86,62 @@
     field.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  function setButtonLoading(button, isLoading) {
+    if (!button) return;
+    if (!button.dataset.defaultText) {
+      button.dataset.defaultText = button.textContent || 'Generate';
+    }
+    button.disabled = isLoading;
+    button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    button.textContent = isLoading ? 'Generating...' : button.dataset.defaultText;
+    button.classList.toggle('is-loading', isLoading);
+  }
+
+  function setStatus(statusEl, level, lines) {
+    if (!statusEl) return;
+    statusEl.className = 'ai-generate-status ai-generate-status-' + level;
+
+    var safeLines = Array.isArray(lines) ? lines.filter(Boolean) : [String(lines || '')];
+    statusEl.innerHTML = safeLines
+      .map(function (line) {
+        return '<div class=\"ai-generate-line\">' + line + '</div>';
+      })
+      .join('');
+  }
+
   function initGenerateAction(radios, tabs, aiFieldsets, manualFieldsets) {
     var button = qs('#ai-generate-btn');
     var status = qs('#ai-generate-status');
     if (!button) return;
 
     button.addEventListener('click', function () {
+      if (button.disabled) return;
+
       var url = button.getAttribute('data-url');
       var topic = (qs('#id_ai_topic') && qs('#id_ai_topic').value.trim()) || '';
       var keywords = (qs('#id_ai_keywords') && qs('#id_ai_keywords').value.trim()) || '';
       var tone = (qs('#id_ai_tone') && qs('#id_ai_tone').value.trim()) || '';
+      var startedAt = Date.now();
 
       if (!topic) {
-        if (status) status.textContent = 'Topic is required.';
+        setStatus(status, 'error', [
+          'Validation failed: topic is required.',
+          'Fix: enter AI topic and click Generate again.',
+        ]);
         return;
       }
 
       setMode('ai', radios, tabs, aiFieldsets, manualFieldsets);
-      button.disabled = true;
-      if (status) status.textContent = 'Generating...';
+      setButtonLoading(button, true);
+      setStatus(status, 'pending', [
+        'Validating input...',
+        'Sending request to backend AI endpoint...',
+      ]);
+
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () {
+        controller.abort();
+      }, 180000);
 
       fetch(url, {
         method: 'POST',
@@ -112,6 +149,7 @@
           'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken') || '',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           topic: topic,
           keywords: keywords,
@@ -119,31 +157,64 @@
         }),
       })
         .then(function (response) {
+          setStatus(status, 'pending', [
+            'Backend responded.',
+            'Parsing AI output payload...',
+          ]);
           return response
-            .json()
+            .text()
             .catch(function () {
-              return {};
+              return '';
             })
-            .then(function (data) {
+            .then(function (bodyText) {
+              var data = {};
+              try {
+                data = bodyText ? JSON.parse(bodyText) : {};
+              } catch (e) {
+                data = {};
+              }
+
               if (!response.ok) {
-                throw new Error(data.error || 'Generation failed.');
+                var detail = data.error || 'Generation failed.';
+                var hint = data.hint ? 'Hint: ' + data.hint : '';
+                throw new Error('HTTP ' + response.status + ': ' + detail + (hint ? ' | ' + hint : ''));
               }
               return data;
             });
         })
         .then(function (data) {
+          setStatus(status, 'pending', [
+            'AI content received.',
+            'Applying generated content to form fields...',
+          ]);
           setValueAndTrigger('id_title', data.title || '');
           setValueAndTrigger('id_content', data.content || '');
           setValueAndTrigger('id_seo_title', data.seo_title || '');
           setValueAndTrigger('id_seo_description', data.seo_description || '');
           setValueAndTrigger('id_seo_keywords', data.seo_keywords || '');
-          if (status) status.textContent = 'Generated. Review fields and save.';
+          var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+          setStatus(status, 'success', [
+            'Generation complete in ' + seconds + 's.',
+            'Fields updated: title, content, SEO title, description, keywords.',
+            'Next step: review content and click Save.',
+          ]);
         })
         .catch(function (err) {
-          if (status) status.textContent = err.message || 'Generation failed.';
+          if (err && err.name === 'AbortError') {
+            setStatus(status, 'error', [
+              'Generation timed out after 180s.',
+              'Fix: try a shorter topic/keywords or retry.',
+            ]);
+            return;
+          }
+          setStatus(status, 'error', [
+            'Generation failed.',
+            err && err.message ? err.message : 'Unknown error.',
+          ]);
         })
         .finally(function () {
-          button.disabled = false;
+          clearTimeout(timeoutId);
+          setButtonLoading(button, false);
         });
     });
   }

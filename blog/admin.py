@@ -1,6 +1,7 @@
 # /media/gradientvvv/Linux/blog-app/blog/admin.py
 
 import json
+import logging
 
 from django import forms
 from django.contrib import admin, messages
@@ -11,6 +12,8 @@ from django.utils.html import format_html
 
 from .ai_services import AIGenerationError, AIGeneratedPost, generate_post_with_ai
 from .models import Post, Category, Comment, AdSenseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class PostAdminForm(forms.ModelForm):
@@ -182,7 +185,7 @@ class PostAdmin(admin.ModelAdmin):
         generate_url = reverse("admin:blog_post_ai_generate")
         return format_html(
             '<button type="button" id="ai-generate-btn" class="button" data-url="{}">Generate</button>'
-            '<span id="ai-generate-status" style="margin-left:8px;"></span>',
+            '<div id="ai-generate-status" class="ai-generate-status" aria-live="polite"></div>',
             generate_url,
         )
 
@@ -204,14 +207,35 @@ class PostAdmin(admin.ModelAdmin):
         tone = str(payload.get("tone") or "").strip() or None
 
         if not topic:
-            return JsonResponse({"error": "AI topic is required."}, status=400)
+            return JsonResponse(
+                {"error": "AI topic is required.", "hint": "Enter a clear topic before clicking Generate."},
+                status=400,
+            )
         if tone and tone not in {choice[0] for choice in PostAdminForm.AI_TONE_CHOICES}:
-            return JsonResponse({"error": "Invalid AI tone."}, status=400)
+            return JsonResponse(
+                {"error": "Invalid AI tone.", "hint": "Use one of: academic, friendly, expert."},
+                status=400,
+            )
 
         try:
             generated = generate_post_with_ai(topic=topic, keywords=keywords, tone=tone)
         except AIGenerationError as exc:
-            return JsonResponse({"error": str(exc)}, status=400)
+            return JsonResponse(
+                {
+                    "error": str(exc),
+                    "hint": "Refine topic/keywords and retry. If this continues, check OPENAI_API_KEY and model access.",
+                },
+                status=400,
+            )
+        except Exception:
+            logger.exception("Unexpected error during admin AI generation.")
+            return JsonResponse(
+                {
+                    "error": "Unexpected server error during AI generation.",
+                    "hint": "Check server logs for traceback and OpenAI/network configuration.",
+                },
+                status=500,
+            )
 
         return JsonResponse(
             {

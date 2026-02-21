@@ -24,6 +24,10 @@
   color: #fff;
 }
 
+.button.is-loading {
+  opacity: 0.7;
+}
+
 .mode-radio-hidden {
   display: none;
 }
@@ -38,4 +42,32 @@ fieldset.mode-muted .readonly,
 fieldset.mode-muted label,
 fieldset.mode-muted legend {
   opacity: 0.85;
+}
+
+.ai-generate-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccd4dd;
+  background: #f8fafc;
+  color: #1f2937;
+}
+
+.ai-generate-line + .ai-generate-line {
+  margin-top: 4px;
+}
+
+.ai-generate-status-pending {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.ai-generate-status-success {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.ai-generate-status-error {
+  border-color: #fca5a5;
+  background: #fef2f2;
 }
