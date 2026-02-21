@@ -1,7 +1,7 @@
 // app/lib/api.ts
 
 // Backend URL manzilini sozlash (prefiks /api/ bilan)
-const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.zuuu.uz:8000'}/api`;
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.zuuu.uz'}/api`;
 
 /**
  * 1. Barcha postlarni olish
