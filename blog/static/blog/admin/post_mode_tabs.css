@@ -30,6 +30,7 @@
 
 fieldset.mode-muted {
   opacity: 0.45;
+  pointer-events: none;
 }
 
 fieldset.mode-muted .help,

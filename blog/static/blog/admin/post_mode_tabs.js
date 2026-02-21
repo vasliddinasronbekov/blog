@@ -14,27 +14,6 @@
   function setFieldsetMuted(fieldset, muted) {
     if (!fieldset) return;
     fieldset.classList.toggle('mode-muted', muted);
-
-    qsa('input, select, textarea, button', fieldset).forEach(function (el) {
-      if (el.id === 'id_generation_mode') return;
-      if (el.name === 'generation_mode') return;
-      if (el.name === '_save' || el.name === '_addanother' || el.name === '_continue') return;
-
-      if (muted) {
-        if (!el.hasAttribute('data-prev-disabled')) {
-          el.setAttribute('data-prev-disabled', el.disabled ? '1' : '0');
-        }
-        el.disabled = true;
-      } else {
-        var prev = el.getAttribute('data-prev-disabled');
-        if (prev !== null) {
-          el.disabled = prev === '1';
-          el.removeAttribute('data-prev-disabled');
-        } else {
-          el.disabled = false;
-        }
-      }
-    });
   }
 
   function setFieldsetsMuted(fieldsets, muted) {
@@ -85,6 +64,81 @@
     setFieldsetsMuted(manualFieldsets, mode !== 'manual');
   }
 
+  function getCookie(name) {
+    var cookies = document.cookie ? document.cookie.split(';') : [];
+    for (var i = 0; i < cookies.length; i += 1) {
+      var cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + '=') {
+        return decodeURIComponent(cookie.substring(name.length + 1));
+      }
+    }
+    return null;
+  }
+
+  function setValueAndTrigger(id, value) {
+    var field = qs('#' + id);
+    if (!field) return;
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function initGenerateAction() {
+    var button = qs('#ai-generate-btn');
+    var status = qs('#ai-generate-status');
+    if (!button) return;
+
+    button.addEventListener('click', function () {
+      var url = button.getAttribute('data-url');
+      var topic = (qs('#id_ai_topic') && qs('#id_ai_topic').value.trim()) || '';
+      var keywords = (qs('#id_ai_keywords') && qs('#id_ai_keywords').value.trim()) || '';
+      var tone = (qs('#id_ai_tone') && qs('#id_ai_tone').value.trim()) || '';
+
+      if (!topic) {
+        if (status) status.textContent = 'Topic is required.';
+        return;
+      }
+
+      button.disabled = true;
+      if (status) status.textContent = 'Generating...';
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken') || '',
+        },
+        body: JSON.stringify({
+          topic: topic,
+          keywords: keywords,
+          tone: tone,
+        }),
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            if (!response.ok) {
+              throw new Error(data.error || 'Generation failed.');
+            }
+            return data;
+          });
+        })
+        .then(function (data) {
+          setValueAndTrigger('id_title', data.title || '');
+          setValueAndTrigger('id_content', data.content || '');
+          setValueAndTrigger('id_seo_title', data.seo_title || '');
+          setValueAndTrigger('id_seo_description', data.seo_description || '');
+          setValueAndTrigger('id_seo_keywords', data.seo_keywords || '');
+          if (status) status.textContent = 'Generated. Review fields and save.';
+        })
+        .catch(function (err) {
+          if (status) status.textContent = err.message || 'Generation failed.';
+        })
+        .finally(function () {
+          button.disabled = false;
+        });
+    });
+  }
+
   function init() {
     var modeRow = findFieldRow('generation_mode');
     if (!modeRow) return;
@@ -126,6 +180,7 @@
     });
 
     setMode(getModeValue(), radios, tabs, [aiFieldset], manualFieldsets);
+    initGenerateAction();
   }
 
   if (document.readyState === 'loading') {

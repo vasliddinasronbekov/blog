@@ -1,7 +1,13 @@
 # /media/gradientvvv/Linux/blog-app/blog/admin.py
 
+import json
+
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
+from django.urls import path, reverse
+from django.utils.html import format_html
 
 from .ai_services import AIGenerationError, AIGeneratedPost, generate_post_with_ai
 from .models import Post, Category, Comment, AdSenseSettings
@@ -57,12 +63,20 @@ class PostAdminForm(forms.ModelForm):
         cleaned_data = super().clean()
         mode = cleaned_data.get("generation_mode", self.GENERATION_MODE_MANUAL)
         ai_topic = (cleaned_data.get("ai_topic") or "").strip()
+        has_generated_payload = bool(
+            (cleaned_data.get("title") or "").strip()
+            and (cleaned_data.get("content") or "").strip()
+        )
 
         if mode == self.GENERATION_MODE_MANUAL:
             if not (cleaned_data.get("title") or "").strip():
                 self.add_error("title", "Title is required in manual mode.")
             if not (cleaned_data.get("content") or "").strip():
                 self.add_error("content", "Content is required in manual mode.")
+            return cleaned_data
+
+        # If fields are already filled (e.g. via Generate button), do not call AI again.
+        if has_generated_payload:
             return cleaned_data
 
         if not ai_topic:
@@ -120,7 +134,7 @@ class PostAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Generation Mode', {
-            'fields': ('generation_mode', 'ai_topic', 'ai_keywords', 'ai_tone')
+            'fields': ('generation_mode', 'ai_topic', 'ai_keywords', 'ai_tone', 'ai_generate_action')
         }),
         ('Asosiy', {
             'fields': ('title', 'slug', 'category', 'author')
@@ -143,12 +157,66 @@ class PostAdmin(admin.ModelAdmin):
 
     )
 
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at', 'ai_generate_action')
     class Media:
         css = {
             "all": ("blog/admin/post_mode_tabs.css",),
         }
         js = ("blog/admin/post_mode_tabs.js",)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "ai-generate/",
+                self.admin_site.admin_view(self.ai_generate_view),
+                name="blog_post_ai_generate",
+            ),
+        ]
+        return custom_urls + urls
+
+    def ai_generate_action(self, obj=None):
+        generate_url = reverse("admin:blog_post_ai_generate")
+        return format_html(
+            '<button type="button" id="ai-generate-btn" class="button" data-url="{}">Generate</button>'
+            '<span id="ai-generate-status" style="margin-left:8px;"></span>',
+            generate_url,
+        )
+
+    ai_generate_action.short_description = "Generate Post"
+
+    def ai_generate_view(self, request):
+        if not (self.has_add_permission(request) or self.has_change_permission(request)):
+            raise PermissionDenied("You do not have permission to generate AI content.")
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed."}, status=405)
+
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON payload."}, status=400)
+
+        topic = str(payload.get("topic") or "").strip()
+        keywords = str(payload.get("keywords") or "").strip() or None
+        tone = str(payload.get("tone") or "").strip() or None
+
+        if not topic:
+            return JsonResponse({"error": "AI topic is required."}, status=400)
+
+        try:
+            generated = generate_post_with_ai(topic=topic, keywords=keywords, tone=tone)
+        except AIGenerationError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
+
+        return JsonResponse(
+            {
+                "title": generated.title,
+                "content": generated.content,
+                "seo_title": generated.seo_title,
+                "seo_description": generated.seo_description,
+                "seo_keywords": generated.seo_keywords,
+            }
+        )
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
