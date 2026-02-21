@@ -7,12 +7,11 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
-
 SECRET_KEY = 'django-insecure-rkw15(97-xhlnt&ibz$wxoa8et!hs3lgbpy*ct0ghp(x0fg02%' # Productionda .env ga oling
 
 DEBUG = True # Productionda False qiling
 
-ALLOWED_HOSTS = ['*'] # Productionda domen nomini yozing
+ALLOWED_HOSTS = ['api.zuuu.uz', '16.171.149.115', 'localhost', '127.0.0.1']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -47,17 +46,17 @@ ROOT_URLCONF = 'blog_backend.urls'
 
 # CORS sozlamalari (Frontend Next.js uchun)
 CORS_ALLOWED_ORIGINS = [
-    "https://api.zuuu.uz",
+    "https://api.zuuu.uz","https://zuuu.uz"
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'blogdb',
+        'NAME': 'blog_db',
         'USER': 'blogdev',
-        'PASSWORD': 'SOweneedmoreandmoreMONEY',
-        'HOST': 'api.zuuu.uz',
+        'PASSWORD':'BlogForDev',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }
@@ -116,3 +115,5 @@ OPENAI_TIMEOUT_SECONDS = int(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
 
 # Site URL used for canonical sitemap links
 SITE_URL = os.getenv("SITE_URL", "https://zuuu.uz")
+
+

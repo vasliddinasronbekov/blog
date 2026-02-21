@@ -5,12 +5,12 @@ import time
 # ==========================================
 # ⚙️ CONFIGURATION
 # ==========================================
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://api.zuuu.uz"
 API_POSTS_URL = f"{BASE_URL}/api/posts/"
 API_TOKEN_URL = f"{BASE_URL}/api/token/" 
 
 # 🔒 CREDENTIALS
-USERNAME = "gradientvvv"
+USERNAME = "main"
 PASSWORD = "BlogForDev" # <--- Update this!
 
 # 🔢 CATEGORY PKs (From your JSON output)
