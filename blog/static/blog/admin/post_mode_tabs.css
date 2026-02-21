@@ -1,0 +1,40 @@
+.post-mode-tabs {
+  display: inline-flex;
+  border: 1px solid #ccd4dd;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 0 12px;
+}
+
+.post-mode-tab {
+  border: 0;
+  background: #f5f7fa;
+  color: #273444;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.post-mode-tab + .post-mode-tab {
+  border-left: 1px solid #ccd4dd;
+}
+
+.post-mode-tab.active {
+  background: #2f6feb;
+  color: #fff;
+}
+
+.mode-radio-hidden {
+  display: none;
+}
+
+fieldset.mode-muted {
+  opacity: 0.45;
+}
+
+fieldset.mode-muted .help,
+fieldset.mode-muted .readonly,
+fieldset.mode-muted label,
+fieldset.mode-muted legend {
+  opacity: 0.85;
+}

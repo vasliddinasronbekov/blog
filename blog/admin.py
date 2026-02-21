@@ -21,6 +21,7 @@ class PostAdminForm(forms.ModelForm):
             (GENERATION_MODE_MANUAL, "Manual"),
             (GENERATION_MODE_AI, "AI"),
         ),
+        widget=forms.RadioSelect,
         initial=GENERATION_MODE_MANUAL,
         required=True,
         help_text="Choose Manual for default workflow or AI to auto-generate content.",
@@ -143,6 +144,11 @@ class PostAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ('created_at', 'updated_at')
+    class Media:
+        css = {
+            "all": ("blog/admin/post_mode_tabs.css",),
+        }
+        js = ("blog/admin/post_mode_tabs.js",)
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
