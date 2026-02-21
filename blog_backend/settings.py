@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = 'django-insecure-rkw15(97-xhlnt&ibz$wxoa8et!hs3lgbpy*ct0ghp(x0fg02%' # Productionda .env ga oling
 
-DEBUG = True # Productionda False qiling
+DEBUG = False # Productionda False qiling
 
 ALLOWED_HOSTS = ['api.zuuu.uz', '16.171.149.115', 'localhost', '127.0.0.1']
 
