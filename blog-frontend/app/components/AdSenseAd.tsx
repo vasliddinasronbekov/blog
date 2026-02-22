@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { AdSenseConfig } from '@/app/lib/api';
+import { AdSenseConfig } from '../lib/api';
 
 interface AdSenseAdProps {
   config: AdSenseConfig;
