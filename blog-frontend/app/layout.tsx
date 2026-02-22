@@ -6,6 +6,7 @@ import SessionWrapper from "./components/SessionWrapper";
 import Navbar from './components/Navbar';
 import { getAdSenseSettings } from "./lib/api";
 import Script from "next/script";
+import { Analytics } from '@vercel/analytics/next';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -98,6 +99,7 @@ export default async function RootLayout({
           <Navbar />
           {children}
         </SessionWrapper>
+        <Analytics />
       </body>
     </html>
   );
