@@ -5,7 +5,6 @@ import "./globals.css";
 import SessionWrapper from "./components/SessionWrapper";
 import Navbar from './components/Navbar';
 import { getAdSenseSettings } from "./lib/api";
-import AdSenseAd from "./components/AdSenseAd";
 import Script from "next/script";
 
 const geistSans = Geist({
@@ -41,7 +40,11 @@ export default async function RootLayout({
   const adsenseSettings = await getAdSenseSettings();
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
+      <head />
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
+      >
         {adsenseSettings?.enabled && adsenseSettings?.publisher_id && (
           <Script
             async
@@ -50,12 +53,6 @@ export default async function RootLayout({
             crossOrigin="anonymous"
           />
         )}
-      </head>
-      <body
-      
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
-      >
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
             try{
@@ -100,7 +97,6 @@ export default async function RootLayout({
         <SessionWrapper>
           <Navbar />
           {children}
-          {adsenseSettings && <AdSenseAd config={adsenseSettings} placement="homepage" />}
         </SessionWrapper>
       </body>
     </html>
