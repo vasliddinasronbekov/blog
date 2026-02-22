@@ -47,10 +47,9 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         {adsenseSettings?.enabled && adsenseSettings?.publisher_id && (
-          <Script
+          <script
             async
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseSettings.publisher_id}`}
-            strategy="afterInteractive"
             crossOrigin="anonymous"
           />
         )}
