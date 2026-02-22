@@ -1,7 +1,13 @@
-'use client';
-
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation'; // Ensure ads reload on navigation
 import { AdSenseConfig } from '../lib/api';
+
+// 1. Fix TypeScript window error
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+  }
+}
 
 interface AdSenseAdProps {
   config: AdSenseConfig;
