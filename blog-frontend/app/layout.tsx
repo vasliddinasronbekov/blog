@@ -4,7 +4,6 @@ import "./globals.css";
 import SessionWrapper from "./components/SessionWrapper";
 import Navbar from "./components/Navbar";
 import { getAdSenseSettings } from "./lib/api";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
@@ -42,25 +41,19 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
-      >
-        {/* ✅ AdSense global script (singleton safe) */}
+      <head>
+        {/* ✅ Standard HTML script avoids the AdSense "data-nscript" error */}
         {adsense?.enabled && adsense?.publisher_id && (
-          <Script
-            id="adsense-script"
+          <script
             async
-            strategy="afterInteractive"
-            crossOrigin="anonymous"
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsense.publisher_id}`}
-          />
+            crossOrigin="anonymous"
+          ></script>
         )}
 
-        {/* ✅ Theme boot script */}
-        <Script
+        {/* ✅ Standard HTML script in head prevents body hydration mismatches */}
+        <script
           id="theme-init"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
 (function(){
@@ -79,7 +72,11 @@ export default async function RootLayout({
 })();`,
           }}
         />
-
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <SessionWrapper>
           <Navbar />
           {children}
