@@ -3,16 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
-import { createPost, getCategories } from './../lib/api'; // Pathga e'tibor bering
+import { createPost, getCategories, Category } from './../lib/api';
 import Editor from './../components/Editor';
-import Card from '../components/ui/Card';
+import Image from 'next/image';
 
 export default function CreatePostPage() {
   const { data: session, status } = useSession();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState<string>('');
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [featuredImage, setFeaturedImage] = useState<File | null>(null);
   const [featuredPreview, setFeaturedPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +49,6 @@ export default function CreatePostPage() {
     }
 
     try {
-      // accessToken o'rniga session.user.accessToken (NextAuth sozlamasiga bog'liq)
       const token = (session as any)?.accessToken; 
       
       await createPost({ 
@@ -61,8 +60,12 @@ export default function CreatePostPage() {
 
       router.push('/');
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || 'Post yaratishda xatolik yuz berdi');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || 'Post yaratishda xatolik yuz berdi');
+      } else {
+        setError('Post yaratishda xatolik yuz berdi');
+      }
     } finally {
       setLoading(false);
     }
@@ -145,7 +148,7 @@ export default function CreatePostPage() {
               <div className="col-span-1">
                 {featuredPreview ? (
                   <div className="w-full h-40 glass-card rounded-xl overflow-hidden layer-2">
-                    <img src={featuredPreview} alt="preview" className="object-cover w-full h-full" />
+                    <Image src={featuredPreview} alt="preview" layout="fill" objectFit="cover" />
                   </div>
                 ) : (
                   <div className="w-full h-40 glass-card rounded-xl flex items-center justify-center muted text-center">

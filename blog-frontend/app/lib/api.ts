@@ -9,6 +9,14 @@ type ListResponse<T> = {
   results?: T[];
 };
 
+export type AdSenseConfig = {
+  enabled: boolean;
+  publisher_id?: string;
+  homepage_ad_unit_id?: string;
+  post_sidebar_ad_unit_id?: string;
+  post_content_ad_unit_id?: string;
+};
+
 export type Tag = {
   id: number;
   name: string;
@@ -63,6 +71,17 @@ async function fetchJson(url: string, init?: RequestInit, fallbackError = 'Reque
     throw new Error(`${fallbackError}: ${res.status}`);
   }
   return res.json();
+}
+
+export async function getAdSenseSettings(): Promise<AdSenseConfig | null> {
+    try {
+      const data = await fetchJson(`${API_BASE}/adsense-settings/`, { next: { revalidate: 3600 } }, 'AdSense sozlamalari topilmadi');
+      return data;
+    }
+    catch (error) {
+        console.error('getAdSenseSettings xatosi:', error);
+        return null;
+    }
 }
 
 export async function getPosts(filters?: {

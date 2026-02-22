@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { signIn } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Card from '../components/ui/Card';
 
 export default function SignUp() {
   const [formData, setFormData] = useState({ username: '', email: '', password: '' });
@@ -44,8 +43,12 @@ export default function SignUp() {
       } else {
         router.push('/');
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Roʻyxatdan oʻtishda xatolik!');
+      }
     } finally {
       setLoading(false);
     }

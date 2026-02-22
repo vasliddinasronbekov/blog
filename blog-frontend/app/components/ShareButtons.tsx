@@ -13,7 +13,7 @@ export default function ShareButtons({ url, title }: { url: string; title?: stri
       await navigator.clipboard.writeText(frontendUrl);
       setCopied(true);
       setTimeout(()=>setCopied(false), 2000);
-    }catch(e){
+    }catch{
       // ignore
     }
   }

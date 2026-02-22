@@ -1,6 +1,5 @@
-import Link from 'next/link';
 
-export default function AuthorCard({ name, avatarSrc }: { name?: string; avatarSrc?: string }) {
+export default function AuthorCard({ name }: { name?: string;}) {
   return (
     <div className="flex items-center gap-3">
       <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-lg font-semibold">

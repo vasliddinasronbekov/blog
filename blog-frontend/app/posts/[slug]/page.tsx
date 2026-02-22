@@ -1,9 +1,10 @@
-import { getPostBySlug, getRelatedPostsForPost, Post, PostComment } from './../../lib/api';
+import { getAdSenseSettings, getPostBySlug, getRelatedPostsForPost, Post, PostComment } from './../../lib/api';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DOMPurify from 'isomorphic-dompurify';
 import ShareButtons from '../../components/ShareButtons';
+import AdSenseAd from '../../components/AdSenseAd';
 
 // Metadata qo'shish (SEO uchun juda muhim)
 export async function generateMetadata(
@@ -31,10 +32,11 @@ export async function generateMetadata(
 }
 
 export default async function PostPage(
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug:string }> }
 ) {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
+  const adsenseSettings = await getAdSenseSettings();
 
   if (!post) notFound();
 
@@ -110,6 +112,11 @@ export default async function PostPage(
             <div className="prose prose-blue prose-lg max-w-none text-current">
               <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
             </div>
+            {adsenseSettings && (
+              <div className="my-8">
+                <AdSenseAd config={adsenseSettings} placement="post-content" />
+              </div>
+            )}
           </div>
 
           {post.comments && post.comments.length > 0 && (
@@ -141,6 +148,12 @@ export default async function PostPage(
               </div>
             </div>
           </div>
+
+          {adsenseSettings && (
+            <div className="my-8">
+              <AdSenseAd config={adsenseSettings} placement="post-sidebar" />
+            </div>
+          )}
 
           <div className="card p-4">
             <h4 className="font-semibold mb-2">Related</h4>

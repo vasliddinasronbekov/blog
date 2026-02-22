@@ -28,9 +28,14 @@ export default function PostArchive({
       {posts.length === 0 ? (
         <div className="glass-card p-12 text-center layer-2">
           <p className="text-lg muted mb-2">{emptyLabel}</p>
-          <Link href="/" className="btn-secondary inline-block mt-4">
-            Back to Home
-          </Link>
+          <div className="flex justify-center gap-4 mt-4">
+            <Link href="/" className="btn-secondary inline-block">
+              Back to Home
+            </Link>
+            <Link href="/create" className="btn-primary inline-block">
+              Create a Post
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="bento-grid">

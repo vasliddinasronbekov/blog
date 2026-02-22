@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { signIn } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Card from '../components/ui/Card';
 
 export default function SignIn() {
   const [username, setUsername] = useState('');
@@ -32,7 +31,7 @@ export default function SignIn() {
 
       router.push('/');
       router.refresh(); // refresh session-aware data
-    } catch (err) {
+    } catch {
       setError('Tizimda xatolik yuz berdi');
       setLoading(false);
     }
@@ -102,7 +101,7 @@ export default function SignIn() {
           </div>
           
           <p className="text-center text-muted text-sm">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="font-bold" style={{ color: 'var(--accent)' }}>
               Create one
             </Link>

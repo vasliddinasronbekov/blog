@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Category, getCategories, getPosts, getTags, Post, Tag } from './lib/api';
+import { Category, getAdSenseSettings, getCategories, getPosts, getTags, Post, Tag } from './lib/api';
 import PostCard from './components/PostCard';
 import AdSenseAd from './components/AdSenseAd';
 
@@ -10,6 +10,8 @@ export default async function Home() {
   let categories: Category[] = [];
   let tags: Tag[] = [];
   let error = null;
+
+  const adsenseSettings = await getAdSenseSettings();
 
   try {
     const [postsData, categoriesData, tagsData] = await Promise.all([
@@ -96,9 +98,11 @@ export default async function Home() {
           </div>
 
           {/* Ad after grid */}
+          {adsenseSettings && (
           <div className="my-12">
-            <AdSenseAd placement="homepage" className="w-full" />
+            <AdSenseAd config={adsenseSettings} placement="homepage" className="w-full" />
           </div>
+          )}
         </>
       )}
     </main>
