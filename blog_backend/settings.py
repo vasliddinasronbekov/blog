@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# Ensure .env values are applied even when stale vars exist in process env.
+load_dotenv(BASE_DIR / ".env", override=True)
 SECRET_KEY = 'django-insecure-rkw15(97-xhlnt&ibz$wxoa8et!hs3lgbpy*ct0ghp(x0fg02%' # Productionda .env ga oling
 
 DEBUG = False # Productionda False qiling
@@ -109,11 +110,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OpenAI
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 OPENAI_TIMEOUT_SECONDS = int(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
 
 # Site URL used for canonical sitemap links
 SITE_URL = os.getenv("SITE_URL", "https://zuuu.uz")
-
 

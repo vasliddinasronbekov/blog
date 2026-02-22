@@ -6,6 +6,7 @@ from typing import Optional
 
 from django.conf import settings
 from openai import OpenAI
+from openai import AuthenticationError
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ def generate_post_with_ai(
     keywords: Optional[str] = None,
     tone: Optional[str] = None,
 ) -> AIGeneratedPost:
-    api_key = getattr(settings, "OPENAI_API_KEY", "")
+    api_key = str(getattr(settings, "OPENAI_API_KEY", "")).strip().strip('"').strip("'")
     if not api_key:
         raise AIGenerationError("OPENAI_API_KEY is missing. Configure it in your environment.")
 
@@ -95,6 +96,11 @@ def generate_post_with_ai(
         )
         raw_content = response.choices[0].message.content or ""
         payload = json.loads(raw_content)
+    except AuthenticationError as exc:
+        logger.exception("OpenAI authentication failed for topic '%s': %s", topic, exc)
+        raise AIGenerationError(
+            "OpenAI authentication failed (401). Check the active OPENAI_API_KEY in the running server process."
+        ) from exc
     except Exception as exc:
         logger.exception("AI generation failed for topic '%s': %s", topic, exc)
         raise AIGenerationError("AI generation failed. Please try again.") from exc
