@@ -42,6 +42,7 @@ export default async function PostPage(
 
   const related: Post[] = await getRelatedPostsForPost(post, 6);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zuuu.uz';
+  const imageUrl = post.featured_image_url || post.featured_image;
 
   return (
     <main className="container mx-auto px-4 py-12">
@@ -55,7 +56,7 @@ export default async function PostPage(
                 '@type': 'Article',
                 headline: post.seo_title || post.title,
                 description: post.seo_description,
-                image: post.featured_image,
+                image: imageUrl,
                 author: { '@type': 'Person', name: post.author },
                 datePublished: post.created_at,
                 dateModified: post.updated_at || post.created_at,
@@ -65,9 +66,9 @@ export default async function PostPage(
           />
 
           <div className="relative rounded-2xl overflow-hidden shadow-lg mb-8">
-            {post.featured_image ? (
+            {imageUrl ? (
               <div className="w-full hero relative">
-                <Image src={post.featured_image} alt={post.title} fill className="object-cover" unoptimized />
+                <Image src={imageUrl} alt={post.title} fill className="object-cover" unoptimized />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6 text-white">
                   <span className="inline-block bg-blue-600/90 text-xs uppercase px-3 py-1 rounded-full mb-3">{post.category_name || 'Maqola'}</span>
@@ -126,7 +127,7 @@ export default async function PostPage(
                 {post.comments.map((comment: PostComment) => (
                   <div key={comment.id} className="bg-card p-4 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold">{comment.author?.username || comment.author || 'Anon'}</span>
+                      <span className="font-semibold">{comment.author || 'Anon'}</span>
                       <time className="text-xs text-muted">{new Date(comment.created_at).toLocaleDateString()}</time>
                     </div>
                     <p className="text-sm leading-relaxed">{comment.text}</p>

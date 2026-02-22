@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { AdSenseConfig } from '../lib/api';
 
 // 1. Fix TypeScript window error

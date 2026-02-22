@@ -77,6 +77,7 @@ export default function Navbar() {
 
     applyMode(theme);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme]);
 
 

@@ -55,7 +55,7 @@ export default function CreatePostPage() {
         title, 
         content, 
         category_id: categoryId ? parseInt(categoryId) : undefined,
-        featured_image: featuredImage ?? undefined 
+        featured_image: featuredImage
       }, token);
 
       router.push('/');
@@ -147,8 +147,8 @@ export default function CreatePostPage() {
               </div>
               <div className="col-span-1">
                 {featuredPreview ? (
-                  <div className="w-full h-40 glass-card rounded-xl overflow-hidden layer-2">
-                    <Image src={featuredPreview} alt="preview" layout="fill" objectFit="cover" />
+                  <div className="relative w-full h-40 glass-card rounded-xl overflow-hidden layer-2">
+                    <Image src={featuredPreview} alt="preview" fill className="object-cover" />
                   </div>
                 ) : (
                   <div className="w-full h-40 glass-card rounded-xl flex items-center justify-center muted text-center">
