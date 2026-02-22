@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Post, Comment, AdSenseSettings
+from .models import Category, Post, Comment, AdSenseSettings, Tag
 from django.core.validators import MinLengthValidator, FileExtensionValidator
 from django.core.files.images import get_image_dimensions
 
@@ -22,6 +22,16 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name', 'slug', 'post_count']
 
+
+class TagSerializer(serializers.ModelSerializer):
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+
+    class Meta:
+        model = Tag
+        fields = ["id", "name", "slug", "created_by", "created_at"]
+        read_only_fields = ["slug", "created_by", "created_at"]
+
+
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source='author.username')
 
@@ -32,16 +42,25 @@ class CommentSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source='author.username')
     category_name = serializers.ReadOnlyField(source='category.name')
+    category_slug = serializers.ReadOnlyField(source='category.slug')
     comments = CommentSerializer(many=True, read_only=True)
     featured_image_url = serializers.SerializerMethodField()
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(),
+        many=True,
+        required=False,
+    )
+    tag_details = TagSerializer(source="tags", many=True, read_only=True)
+    tag_names = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
             'id', 'title', 'content', 'author', 'category', 'category_name',
+            'category_slug',
             'created_at', 'updated_at', 'slug', 'comments', 'featured_image',
             'featured_image_url', 'seo_title', 'seo_description', 'seo_keywords',
-            'is_indexable', 'canonical_url'
+            'is_indexable', 'canonical_url', 'tags', 'tag_details', 'tag_names'
         ]
         read_only_fields = ['slug', 'featured_image_url']
 
@@ -50,6 +69,9 @@ class PostSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             return request.build_absolute_uri(obj.featured_image.url) if request else obj.featured_image.url
         return None
+
+    def get_tag_names(self, obj):
+        return list(obj.tags.values_list("name", flat=True))
 
     def validate_featured_image(self, value):
         if value:

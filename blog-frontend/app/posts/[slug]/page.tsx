@@ -1,9 +1,8 @@
-import { getPostBySlug } from './../../lib/api';
+import { getPostBySlug, getRelatedPostsForPost, Post, PostComment } from './../../lib/api';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DOMPurify from 'isomorphic-dompurify';
-import AdSenseAd from '../../components/AdSenseAd';
 import ShareButtons from '../../components/ShareButtons';
 
 // Metadata qo'shish (SEO uchun juda muhim)
@@ -39,8 +38,8 @@ export default async function PostPage(
 
   if (!post) notFound();
 
-  const related: any[] = [];
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://api.zuuu.uz';
+  const related: Post[] = await getRelatedPostsForPost(post, 6);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zuuu.uz';
 
   return (
     <main className="container mx-auto px-4 py-12">
@@ -95,6 +94,19 @@ export default async function PostPage(
               </div>
             </div>
 
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              {post.category_name && post.category_slug && (
+                <Link href={`/categories/${post.category_slug}`} className="tag">
+                  {post.category_name}
+                </Link>
+              )}
+              {post.tag_details?.map((tag) => (
+                <Link key={tag.id} href={`/tags/${tag.slug}`} className="tag">
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+
             <div className="prose prose-blue prose-lg max-w-none text-current">
               <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
             </div>
@@ -104,7 +116,7 @@ export default async function PostPage(
             <section className="mt-12 pt-10 border-t border-border">
               <h3 className="text-2xl font-bold mb-6">Izohlar ({post.comments.length})</h3>
               <div className="space-y-4">
-                {post.comments.map((comment: any) => (
+                {post.comments.map((comment: PostComment) => (
                   <div key={comment.id} className="bg-card p-4 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold">{comment.author?.username || comment.author || 'Anon'}</span>
@@ -137,7 +149,11 @@ export default async function PostPage(
             ) : (
               <ul className="space-y-2">
                 {related.map(r => (
-                  <li key={r.id}><Link href={`/posts/${r.slug}`} className="text-sm hover:underline">{r.title}</Link></li>
+                  <li key={r.id}>
+                    <Link href={`/posts/${r.slug}`} className="text-sm hover:underline">
+                      {r.title}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             )}

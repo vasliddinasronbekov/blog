@@ -1,82 +1,194 @@
 // app/lib/api.ts
 
-// Backend URL manzilini sozlash (prefiks /api/ bilan)
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.zuuu.uz'}/api`;
 
-/**
- * 1. Barcha postlarni olish
- * Django DRF Pagination (PageNumberPagination) bilan moslangan
- */
-export async function getPosts() {
-  try {
-    const res = await fetch(`${API_BASE}/posts/`, {
-      next: { revalidate: 60 }, // ISR: Har 1 minutda keshni yangilash
-    });
+type ListResponse<T> = {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
+  results?: T[];
+};
 
-    if (!res.ok) {
-      throw new Error(`Xatolik: ${res.status} - Postlarni yuklab bo'lmadi`);
-    }
+export type Tag = {
+  id: number;
+  name: string;
+  slug: string;
+};
 
-    const data = await res.json();
-    // Django Pagination ishlatsa natija .results ichida bo'ladi, aks holda massiv o'zi
-    return data.results || data;
-  } catch (error) {
-    console.error("getPosts xatosi:", error);
-    throw error;
-  }
+export type Category = {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+export type Post = {
+  id: number;
+  title: string;
+  content: string;
+  author?: string;
+  category?: number | null;
+  category_name?: string;
+  category_slug?: string;
+  created_at: string;
+  updated_at?: string;
+  slug: string;
+  featured_image?: string | null;
+  featured_image_url?: string | null;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  is_indexable?: boolean;
+  canonical_url?: string | null;
+  comments?: PostComment[];
+  tags?: number[];
+  tag_names?: string[];
+  tag_details?: Tag[];
+};
+
+export type PostComment = {
+  id: number;
+  author?: { username?: string } | string;
+  text: string;
+  created_at: string;
+};
+
+function normalizeList<T>(data: ListResponse<T> | T[]): T[] {
+  if (Array.isArray(data)) return data;
+  return data.results || [];
 }
 
-/**
- * 2. Bitta postni slug orqali olish
- */
-export async function getPostBySlug(slug: string) {
+async function fetchJson(url: string, init?: RequestInit, fallbackError = 'Request failed') {
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    throw new Error(`${fallbackError}: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getPosts(filters?: {
+  category?: number;
+  tags?: number;
+  page?: number;
+  search?: string;
+}) {
+  const params = new URLSearchParams();
+  if (filters?.category) params.set('category', String(filters.category));
+  if (filters?.tags) params.set('tags', String(filters.tags));
+  if (filters?.page) params.set('page', String(filters.page));
+  if (filters?.search) params.set('search', filters.search);
+
+  const url = params.toString() ? `${API_BASE}/posts/?${params.toString()}` : `${API_BASE}/posts/`;
+  const data = await fetchJson(url, { next: { revalidate: 60 } }, "Xatolik: Postlarni yuklab bo'lmadi");
+  return normalizeList<Post>(data);
+}
+
+export async function getPostBySlug(slug: string): Promise<Post | null> {
   try {
     const res = await fetch(`${API_BASE}/posts/${slug}/`, {
-      next: { revalidate: 300 }, // Detal sahifasini har 5 minutda yangilash
+      next: { revalidate: 300 },
     });
 
     if (!res.ok) {
       if (res.status === 404) return null;
-      throw new Error("Postni yuklashda xatolik");
+      throw new Error('Postni yuklashda xatolik');
     }
 
     return res.json();
   } catch (error) {
-    console.error("getPostBySlug xatosi:", error);
+    console.error('getPostBySlug xatosi:', error);
     return null;
   }
 }
 
-/**
- * 3. Yangi post yaratish
- * FormData orqali rasmlar va matnlarni yuborish
- */
+export async function getRelatedPostsForPost(post: Post, limit = 6): Promise<Post[]> {
+  let related: Post[] = [];
+
+  if (post.tags && post.tags.length > 0) {
+    related = await getPosts({ tags: post.tags[0] });
+  }
+
+  if (related.length === 0 && post.category) {
+    related = await getPosts({ category: post.category });
+  }
+
+  return related.filter((item) => item.slug !== post.slug).slice(0, limit);
+}
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    const data = await fetchJson(`${API_BASE}/categories/`, { cache: 'force-cache' }, "Kategoriyalar topilmadi");
+    return normalizeList<Category>(data);
+  } catch (error) {
+    console.error('getCategories xatosi:', error);
+    return [];
+  }
+}
+
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  try {
+    const data = await fetchJson(
+      `${API_BASE}/categories/?slug=${encodeURIComponent(slug)}`,
+      { next: { revalidate: 300 } },
+      'Kategoriya yuklanmadi'
+    );
+    const categories = normalizeList<Category>(data);
+    return categories[0] || null;
+  } catch (error) {
+    console.error('getCategoryBySlug xatosi:', error);
+    return null;
+  }
+}
+
+export async function getTags(): Promise<Tag[]> {
+  try {
+    const data = await fetchJson(`${API_BASE}/tags/`, { next: { revalidate: 300 } }, 'Taglar yuklanmadi');
+    return normalizeList<Tag>(data);
+  } catch (error) {
+    console.error('getTags xatosi:', error);
+    return [];
+  }
+}
+
+export async function getTagBySlug(slug: string): Promise<Tag | null> {
+  try {
+    const data = await fetchJson(
+      `${API_BASE}/tags/?slug=${encodeURIComponent(slug)}`,
+      { next: { revalidate: 300 } },
+      'Tag yuklanmadi'
+    );
+    const tags = normalizeList<Tag>(data);
+    return tags[0] || null;
+  } catch (error) {
+    console.error('getTagBySlug xatosi:', error);
+    return null;
+  }
+}
+
 export async function createPost(
-  data: { 
-    title: string; 
-    content: string; 
-    category_id?: number; 
-    featured_image?: File | null 
-  }, 
+  data: {
+    title: string;
+    content: string;
+    category_id?: number;
+    featured_image?: File | null;
+  },
   token: string
 ) {
   const formData = new FormData();
   formData.append('title', data.title);
   formData.append('content', data.content);
-  
+
   if (data.category_id) {
-    formData.append('category_id', data.category_id.toString());
+    formData.append('category', data.category_id.toString());
   }
-  
+
   if (data.featured_image) {
     formData.append('featured_image', data.featured_image);
   }
 
   const res = await fetch(`${API_BASE}/posts/`, {
     method: 'POST',
-    headers: { 
-      'Authorization': `Bearer ${token}`, // JWT Token
-      // 'Content-Type' kerak emas, FormData uni avtomatik belgilaydi
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
     body: formData,
   });
@@ -89,37 +201,14 @@ export async function createPost(
   return res.json();
 }
 
-/**
- * 4. Barcha kategoriyalarni olish
- * Formada dropdown (tanlov) yaratish uchun kerak
- */
-export async function getCategories() {
-  try {
-    const res = await fetch(`${API_BASE}/categories/`, {
-      cache: 'force-cache', // Kategoriyalar kam o'zgargani uchun keshlaymiz
-    });
-
-    if (!res.ok) throw new Error("Kategoriyalar topilmadi");
-
-    const data = await res.json();
-    return data.results || data;
-  } catch (error) {
-    console.error("getCategories xatosi:", error);
-    return [];
-  }
-}
-
-/**
- * 5. Izoh qoldirish
- */
 export async function addComment(postId: number, text: string, token: string) {
   const res = await fetch(`${API_BASE}/comments/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ post: postId, text: text }),
+    body: JSON.stringify({ post: postId, text }),
   });
 
   if (!res.ok) throw new Error("Izoh qoldirib bo'lmadi");

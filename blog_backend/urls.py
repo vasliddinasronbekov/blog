@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
-from blog.views import CategoryViewSet, PostViewSet, CommentViewSet, RegisterView, AdSenseSettingsView, sitemap_xml
+from blog.views import CategoryViewSet, PostViewSet, CommentViewSet, RegisterView, AdSenseSettingsView, TagViewSet, sitemap_xml
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -12,6 +12,7 @@ from rest_framework_simplejwt.views import (
 # Router sozlamalari
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
+router.register(r'tags', TagViewSet, basename='tag')
 router.register(r'posts', PostViewSet, basename='post')
 router.register(r'comments', CommentViewSet, basename='comment')
 

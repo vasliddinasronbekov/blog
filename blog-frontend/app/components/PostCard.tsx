@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { Post } from '../lib/api';
 
-export default function PostCard({ post, featured = false }: { post: any; featured?: boolean }){
+export default function PostCard({ post, featured = false }: { post: Post; featured?: boolean }) {
   const cardClass = featured ? 'bento-item-featured' : '';
-  
+
   return (
     <article className={`glass-card overflow-hidden group layer-2 transition-all duration-300 cursor-pointer ${cardClass}`}>
       {/* Image Container */}
@@ -25,14 +26,41 @@ export default function PostCard({ post, featured = false }: { post: any; featur
       <div className="p-6 flex flex-col h-full">
         {/* Category Tag */}
         <div className="mb-3">
-          <span className="tag" style={{ 
-            background: `var(--accent)20`,
-            color: 'var(--accent)',
-            borderColor: `var(--accent)40`
-          }}>
-            {post.category_name || 'Featured'}
-          </span>
+          {post.category_name && post.category_slug ? (
+            <Link
+              href={`/categories/${post.category_slug}`}
+              className="tag"
+              style={{
+                background: `var(--accent)20`,
+                color: 'var(--accent)',
+                borderColor: `var(--accent)40`,
+              }}
+            >
+              {post.category_name}
+            </Link>
+          ) : (
+            <span
+              className="tag"
+              style={{
+                background: `var(--accent)20`,
+                color: 'var(--accent)',
+                borderColor: `var(--accent)40`,
+              }}
+            >
+              Featured
+            </span>
+          )}
         </div>
+
+        {(post.tag_details?.length || 0) > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {post.tag_details?.slice(0, 3).map((tag) => (
+              <Link key={tag.id} href={`/tags/${tag.slug}`} className="tag">
+                #{tag.name}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Title */}
         <h3 className="text-lg font-bold mb-3 line-clamp-2 group-hover:text-accent transition-colors">
@@ -51,7 +79,7 @@ export default function PostCard({ post, featured = false }: { post: any; featur
           {/* Author */}
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xs font-bold text-white">
-              {post.author?.[0] || 'U'}
+              {post.author?.[0]?.toUpperCase() || 'U'}
             </div>
             <span className="text-xs font-medium line-clamp-1">{post.author || 'Author'}</span>
           </div>

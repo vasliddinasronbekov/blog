@@ -19,6 +19,37 @@ class Category(models.Model):
         verbose_name_plural = 'Kategoriyalar'
 
 
+class Tag(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(unique=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_tags",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+            base_slug = self.slug
+            counter = 1
+            while Tag.objects.exclude(pk=self.pk).filter(slug=self.slug).exists():
+                self.slug = f"{base_slug}-{counter}"
+                counter += 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Tag"
+        verbose_name_plural = "Tags"
+
+
 class Post(models.Model):
     category = models.ForeignKey(
         Category,
@@ -71,6 +102,11 @@ class Post(models.Model):
     canonical_url = models.URLField(
         blank=True,
         null=True
+    )
+    tags = models.ManyToManyField(
+        Tag,
+        blank=True,
+        related_name="posts",
     )
 
     created_at = models.DateTimeField(default=now)

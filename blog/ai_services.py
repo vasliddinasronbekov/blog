@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from django.conf import settings
-from openai import OpenAI
-from openai import AuthenticationError
+from openai import AuthenticationError, OpenAI
 
 logger = logging.getLogger(__name__)
 MIN_WORDS = 1200
@@ -25,6 +24,7 @@ class AIGeneratedPost:
     seo_title: str
     seo_description: str
     seo_keywords: str
+    tags: list[str]
 
 
 def _clean_html(value: str) -> str:
@@ -43,6 +43,32 @@ def _truncate(value: str, max_length: int) -> str:
 def _word_count_from_html(html: str) -> int:
     text = re.sub(r"<[^>]+>", " ", html)
     return len(re.findall(r"\b[\w'-]+\b", text))
+
+
+def _normalize_tags(raw_tags: object, fallback_keywords: str = "") -> list[str]:
+    tags: list[str] = []
+
+    if isinstance(raw_tags, list):
+        tags = [str(item).strip() for item in raw_tags if str(item).strip()]
+    elif isinstance(raw_tags, str):
+        tags = [part.strip() for part in raw_tags.split(",") if part.strip()]
+
+    if not tags and fallback_keywords:
+        tags = [part.strip() for part in fallback_keywords.split(",") if part.strip()]
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for tag in tags:
+        cleaned = re.sub(r"\s+", " ", tag.lstrip("#")).strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(cleaned[:60])
+
+    return normalized[:8]
 
 
 def _build_user_prompt(
@@ -79,9 +105,10 @@ def _build_user_prompt(
         "- Keep title <= 60 chars\n"
         "- Keep SEO title <= 60 chars\n"
         "- Keep SEO description <= 160 chars\n"
+        "- Return 4-8 concise related tags (each 1-3 words)\n"
         "- Ensure Google-safe, human-readable writing\n\n"
         "Return strict JSON with keys exactly:\n"
-        "title, content, seo_title, seo_description, seo_keywords"
+        "title, content, seo_title, seo_description, seo_keywords, tags"
         f"{correction}"
     )
 
@@ -105,11 +132,12 @@ def _build_expansion_prompt(
         "- Keep clean semantic HTML only\n"
         "- Must include H2 intro, multiple H3 sections, and a Conclusion section\n"
         "- No scripts, no style tags, no inline CSS\n"
-        "- Keep SEO title <= 60 and SEO description <= 160\n\n"
+        "- Keep SEO title <= 60 and SEO description <= 160\n"
+        "- Keep/return 4-8 concise related tags\n\n"
         "Existing JSON draft to expand (use as baseline and improve):\n"
         f"{json.dumps(generated.__dict__, ensure_ascii=False)}\n\n"
         "Return strict JSON with keys exactly:\n"
-        "title, content, seo_title, seo_description, seo_keywords"
+        "title, content, seo_title, seo_description, seo_keywords, tags"
     )
 
 
@@ -140,12 +168,15 @@ def _request_payload(
 
 def _parse_generated_payload(payload: dict, topic: str) -> AIGeneratedPost:
     try:
+        seo_keywords = _truncate(str(payload["seo_keywords"]).strip(), 255)
+        tags = _normalize_tags(payload.get("tags"), seo_keywords)
         return AIGeneratedPost(
             title=_truncate(str(payload["title"]).strip(), 60),
             content=_clean_html(str(payload["content"])),
             seo_title=_truncate(str(payload["seo_title"]).strip(), 60),
             seo_description=_truncate(str(payload["seo_description"]).strip(), 160),
-            seo_keywords=_truncate(str(payload["seo_keywords"]).strip(), 255),
+            seo_keywords=seo_keywords,
+            tags=tags,
         )
     except KeyError as exc:
         logger.exception("AI payload missing expected fields for topic '%s': %s", topic, exc)
@@ -172,6 +203,9 @@ def _validate_generated(generated: AIGeneratedPost, topic: str) -> tuple[bool, s
             topic,
         )
         return False, f"Word count out of range: {word_count}. Required {MIN_WORDS}-{MAX_WORDS}.", word_count
+    if len(generated.tags) < 3:
+        logger.error("AI response returned too few tags for topic '%s': %s", topic, generated.tags)
+        return False, "Too few tags returned. Need at least 3 related tags.", word_count
 
     return True, "", word_count
 
@@ -210,7 +244,6 @@ def generate_post_with_ai(
             if is_valid:
                 return generated
 
-            # If short/long content, ask model to expand/rewrite using its own draft as baseline.
             if "Word count out of range" in validation_error:
                 expansion_prompt = _build_expansion_prompt(
                     topic=topic,
@@ -241,7 +274,7 @@ def generate_post_with_ai(
             correction_note = (
                 f"Last output issue: {validation_error}\n"
                 f"Previous content word count: {word_count}\n"
-                f"Generate new output within {MIN_WORDS}-{MAX_WORDS} words."
+                f"Generate new output within {MIN_WORDS}-{MAX_WORDS} words with 4-8 relevant tags."
             )
             logger.warning(
                 "AI generation retry %s/%s for topic '%s': %s",

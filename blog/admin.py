@@ -9,7 +9,7 @@ from django.urls import path, reverse
 from django.utils.safestring import mark_safe
 
 from .ai_services import AIGenerationError, AIGeneratedPost, generate_post_with_ai
-from .models import AdSenseSettings, Category, Comment, Post
+from .models import AdSenseSettings, Category, Comment, Post, Tag
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,10 @@ class PostAdminForm(forms.ModelForm):
         choices=(("", "Default (Expert)"),) + AI_TONE_CHOICES,
         help_text="Optional tone.",
     )
+    ai_generated_tags = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(),
+    )
 
     class Meta:
         model = Post
@@ -63,6 +67,36 @@ class PostAdminForm(forms.ModelForm):
         self.fields["title"].required = False
         self.fields["content"].required = False
         self._ai_generated_post: AIGeneratedPost | None = None
+        self._ai_generated_tag_names: list[str] = []
+
+    @staticmethod
+    def _parse_tag_names(raw_value: str) -> list[str]:
+        value = (raw_value or "").strip()
+        if not value:
+            return []
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                source = [str(item) for item in parsed]
+            elif isinstance(parsed, str):
+                source = parsed.split(",")
+            else:
+                source = []
+        except json.JSONDecodeError:
+            source = value.split(",")
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in source:
+            tag = item.strip().lstrip("#")
+            if not tag:
+                continue
+            key = tag.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(tag[:100])
+        return normalized[:8]
 
     def clean(self):
         cleaned_data = super().clean()
@@ -88,6 +122,7 @@ class PostAdminForm(forms.ModelForm):
 
         # AI mode: if already filled (generated via button or edited), no second API call.
         if has_manual_payload:
+            self._ai_generated_tag_names = self._parse_tag_names(cleaned_data.get("ai_generated_tags") or "")
             return cleaned_data
 
         if not ai_topic:
@@ -103,10 +138,29 @@ class PostAdminForm(forms.ModelForm):
                 keywords=(cleaned_data.get("ai_keywords") or "").strip() or None,
                 tone=(cleaned_data.get("ai_tone") or "").strip() or None,
             )
+            self._ai_generated_tag_names = list(self._ai_generated_post.tags)
         except AIGenerationError as exc:
             self.add_error(None, str(exc))
 
         return cleaned_data
+
+    def _attach_ai_tags(self, instance: Post):
+        if not self._ai_generated_tag_names:
+            return
+        tag_objects = []
+        for tag_name in self._ai_generated_tag_names:
+            existing = Tag.objects.filter(name__iexact=tag_name).first()
+            if existing:
+                tag_objects.append(existing)
+                continue
+            tag_objects.append(
+                Tag.objects.create(
+                    name=tag_name,
+                    created_by=instance.author,
+                )
+            )
+        if tag_objects:
+            instance.tags.add(*tag_objects)
 
     def save(self, commit=True):
         instance: Post = super().save(commit=False)
@@ -126,6 +180,8 @@ class PostAdminForm(forms.ModelForm):
         if commit:
             instance.save()
             self.save_m2m()
+            if self.cleaned_data.get("generation_mode") == self.GENERATION_MODE_AI:
+                self._attach_ai_tags(instance)
 
         return instance
 
@@ -159,10 +215,11 @@ class PostAdmin(admin.ModelAdmin):
                     "ai_keywords",
                     "ai_tone",
                     "ai_generate_action",
+                    "ai_generated_tags",
                 )
             },
         ),
-        ("Asosiy", {"fields": ("title", "slug", "category", "author")}),
+        ("Asosiy", {"fields": ("title", "slug", "category", "tags", "author")}),
         ("Kontent", {"fields": ("content", "featured_image")}),
         (
             "SEO (Google)",
@@ -180,6 +237,7 @@ class PostAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ("created_at", "updated_at", "ai_generate_action")
+    filter_horizontal = ("tags",)
 
     def get_changeform_initial_data(self, request):
         initial = super().get_changeform_initial_data(request)
@@ -351,11 +409,16 @@ class PostAdmin(admin.ModelAdmin):
       setFieldValue('id_seo_title', data.seo_title || '');
       setFieldValue('id_seo_description', data.seo_description || '');
       setFieldValue('id_seo_keywords', data.seo_keywords || '');
+      setFieldValue('id_ai_generated_tags', JSON.stringify(data.tags || []));
 
       var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+      var tagLine = (data.tags && data.tags.length)
+        ? ('Suggested tags: ' + data.tags.map(function (tag) { return '#' + tag; }).join(', '))
+        : 'Suggested tags: none';
       setStatus('success', [
         'Generation completed in ' + seconds + 's.',
         'Updated fields: title, content, SEO title, SEO description, SEO keywords.',
+        tagLine,
         'Next: review and click Save.'
       ]);
     } catch (error) {
@@ -458,6 +521,7 @@ class PostAdmin(admin.ModelAdmin):
                 "seo_title": generated.seo_title,
                 "seo_description": generated.seo_description,
                 "seo_keywords": generated.seo_keywords,
+                "tags": generated.tags,
             },
             status=200,
         )
@@ -469,6 +533,11 @@ class PostAdmin(admin.ModelAdmin):
                 request,
                 "AI generation completed. Review content and publish when ready.",
             )
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        if form.cleaned_data.get("generation_mode") == PostAdminForm.GENERATION_MODE_AI:
+            form._attach_ai_tags(form.instance)
 
 
 @admin.register(Category)
@@ -483,6 +552,21 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ("author", "post", "created_at")
     search_fields = ("author", "text")
     list_filter = ("created_at",)
+
+
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "created_by", "created_at")
+    search_fields = ("name", "slug", "created_by__username")
+    readonly_fields = ("slug", "created_by", "created_at")
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def has_delete_permission(self, request, obj=None):
+        return bool(request.user and request.user.is_authenticated and request.user.username == "vasliddin")
 
 
 @admin.register(AdSenseSettings)

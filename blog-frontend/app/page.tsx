@@ -1,17 +1,25 @@
 import Link from 'next/link';
-import { getPosts } from './lib/api';
+import { Category, getCategories, getPosts, getTags, Post, Tag } from './lib/api';
 import PostCard from './components/PostCard';
 import AdSenseAd from './components/AdSenseAd';
 
 export const revalidate = 60; 
 
 export default async function Home() {
-  let posts: any[] = [];
+  let posts: Post[] = [];
+  let categories: Category[] = [];
+  let tags: Tag[] = [];
   let error = null;
 
   try {
-    const data = await getPosts();
-    posts = data.results || data; 
+    const [postsData, categoriesData, tagsData] = await Promise.all([
+      getPosts(),
+      getCategories(),
+      getTags(),
+    ]);
+    posts = postsData;
+    categories = categoriesData;
+    tags = tagsData;
   } catch (err) {
     error = (err as Error).message;
   }
@@ -39,6 +47,32 @@ export default async function Home() {
         </div>
       )}
 
+      {(categories.length > 0 || tags.length > 0) && (
+        <section className="glass-card p-6 mb-10 layer-2">
+          <div className="mb-5">
+            <h2 className="text-lg font-bold mb-3">Browse by Category</h2>
+            <div className="flex flex-wrap gap-2">
+              {categories.slice(0, 10).map((category) => (
+                <Link key={category.id} href={`/categories/${category.slug}`} className="tag">
+                  {category.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold mb-3">Trending Tags</h2>
+            <div className="flex flex-wrap gap-2">
+              {tags.slice(0, 16).map((tag) => (
+                <Link key={tag.id} href={`/tags/${tag.slug}`} className="tag">
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Empty State */}
       {posts.length === 0 && !error && (
         <div className="glass-card p-16 text-center layer-2">
@@ -54,7 +88,7 @@ export default async function Home() {
       {posts.length > 0 && (
         <>
           <div className="bento-grid mb-12">
-            {posts.map((post: any, index: number) => (
+            {posts.map((post, index: number) => (
               <div key={post.id} className={index === 0 ? 'bento-item-featured' : ''}>
                 <PostCard post={post} featured={index === 0} />
               </div>
