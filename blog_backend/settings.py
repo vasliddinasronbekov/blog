@@ -113,7 +113,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 OPENAI_TIMEOUT_SECONDS = int(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
+OPENAI_GENERATION_MAX_ATTEMPTS = int(os.getenv("OPENAI_GENERATION_MAX_ATTEMPTS", "3"))
 
 # Site URL used for canonical sitemap links
 SITE_URL = os.getenv("SITE_URL", "https://zuuu.uz")
-

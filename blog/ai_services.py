@@ -9,6 +9,9 @@ from openai import OpenAI
 from openai import AuthenticationError
 
 logger = logging.getLogger(__name__)
+MIN_WORDS = 1200
+MAX_WORDS = 1800
+TARGET_WORDS = 1400
 
 
 class AIGenerationError(Exception):
@@ -42,6 +45,137 @@ def _word_count_from_html(html: str) -> int:
     return len(re.findall(r"\b[\w'-]+\b", text))
 
 
+def _build_user_prompt(
+    *,
+    topic: str,
+    keywords: str,
+    tone: str,
+    correction_note: Optional[str] = None,
+) -> str:
+    correction = ""
+    if correction_note:
+        correction = (
+            "\n\nPrevious attempt failed. Fix it strictly.\n"
+            f"{correction_note}\n"
+            "Do not repeat the same mistake."
+        )
+
+    return (
+        "Generate a complete IELTS educational blog article and metadata.\n"
+        f"Topic: {topic}\n"
+        f"Preferred keywords: {keywords or 'None provided'}\n"
+        f"Tone: {tone}\n\n"
+        "Requirements:\n"
+        f"- Hard word range: {MIN_WORDS}-{MAX_WORDS} words\n"
+        f"- Target about {TARGET_WORDS} words for reliability\n"
+        "- Use at least 12 substantial paragraphs in total\n"
+        "- Each H3 section should include 2-3 detailed paragraphs\n"
+        "- SEO optimized and natural\n"
+        "- Output content in clean semantic HTML only (no markdown)\n"
+        "- Include one H2 introduction section\n"
+        "- Use multiple H3 subsections\n"
+        "- Include a conclusion section (word 'Conclusion' in heading)\n"
+        "- No inline CSS, no JavaScript, no scripts\n"
+        "- Keep title <= 60 chars\n"
+        "- Keep SEO title <= 60 chars\n"
+        "- Keep SEO description <= 160 chars\n"
+        "- Ensure Google-safe, human-readable writing\n\n"
+        "Return strict JSON with keys exactly:\n"
+        "title, content, seo_title, seo_description, seo_keywords"
+        f"{correction}"
+    )
+
+
+def _build_expansion_prompt(
+    *,
+    topic: str,
+    keywords: str,
+    tone: str,
+    generated: AIGeneratedPost,
+    current_word_count: int,
+) -> str:
+    return (
+        "The previous response was too short. Expand and rewrite it so it passes all constraints.\n"
+        f"Topic: {topic}\n"
+        f"Preferred keywords: {keywords or 'None provided'}\n"
+        f"Tone: {tone}\n"
+        f"Current word count: {current_word_count}\n\n"
+        "Hard requirements:\n"
+        f"- Final content word count must be between {MIN_WORDS} and {MAX_WORDS}\n"
+        "- Keep clean semantic HTML only\n"
+        "- Must include H2 intro, multiple H3 sections, and a Conclusion section\n"
+        "- No scripts, no style tags, no inline CSS\n"
+        "- Keep SEO title <= 60 and SEO description <= 160\n\n"
+        "Existing JSON draft to expand (use as baseline and improve):\n"
+        f"{json.dumps(generated.__dict__, ensure_ascii=False)}\n\n"
+        "Return strict JSON with keys exactly:\n"
+        "title, content, seo_title, seo_description, seo_keywords"
+    )
+
+
+def _request_payload(
+    *,
+    client: OpenAI,
+    model: str,
+    user_prompt: str,
+) -> dict:
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0.2,
+        response_format={"type": "json_object"},
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert IELTS instructor and SEO content writer. "
+                    "Follow constraints exactly and return JSON only."
+                ),
+            },
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    raw_content = response.choices[0].message.content or ""
+    return json.loads(raw_content)
+
+
+def _parse_generated_payload(payload: dict, topic: str) -> AIGeneratedPost:
+    try:
+        return AIGeneratedPost(
+            title=_truncate(str(payload["title"]).strip(), 60),
+            content=_clean_html(str(payload["content"])),
+            seo_title=_truncate(str(payload["seo_title"]).strip(), 60),
+            seo_description=_truncate(str(payload["seo_description"]).strip(), 160),
+            seo_keywords=_truncate(str(payload["seo_keywords"]).strip(), 255),
+        )
+    except KeyError as exc:
+        logger.exception("AI payload missing expected fields for topic '%s': %s", topic, exc)
+        raise AIGenerationError("AI response format was invalid. Please try again.") from exc
+
+
+def _validate_generated(generated: AIGeneratedPost, topic: str) -> tuple[bool, str, int]:
+    if not generated.title or not generated.content:
+        logger.error("AI response missing title/content for topic '%s'", topic)
+        return False, "Missing title or content.", 0
+
+    content_lower = generated.content.lower()
+    word_count = _word_count_from_html(generated.content)
+    if "<h2" not in content_lower or "<h3" not in content_lower:
+        logger.error("AI response missing required heading structure for topic '%s'", topic)
+        return False, "Missing required H2/H3 heading structure.", word_count
+    if "conclusion" not in content_lower:
+        logger.error("AI response missing conclusion section for topic '%s'", topic)
+        return False, "Missing required conclusion section.", word_count
+    if word_count < MIN_WORDS or word_count > MAX_WORDS:
+        logger.error(
+            "AI response out of required word range (%s words) for topic '%s'",
+            word_count,
+            topic,
+        )
+        return False, f"Word count out of range: {word_count}. Required {MIN_WORDS}-{MAX_WORDS}.", word_count
+
+    return True, "", word_count
+
+
 def generate_post_with_ai(
     *,
     topic: str,
@@ -54,83 +188,80 @@ def generate_post_with_ai(
 
     model = getattr(settings, "OPENAI_MODEL", "gpt-4.1-mini")
     timeout = float(getattr(settings, "OPENAI_TIMEOUT_SECONDS", 60))
+    max_attempts = int(getattr(settings, "OPENAI_GENERATION_MAX_ATTEMPTS", 3))
     tone_value = tone or "expert"
     keyword_text = keywords.strip() if keywords else ""
 
-    user_prompt = (
-        "Generate a complete IELTS educational blog article and metadata.\n"
-        f"Topic: {topic}\n"
-        f"Preferred keywords: {keyword_text or 'None provided'}\n"
-        f"Tone: {tone_value}\n\n"
-        "Requirements:\n"
-        "- 1200-1800 words\n"
-        "- SEO optimized and natural\n"
-        "- Output content in clean semantic HTML only (no markdown)\n"
-        "- Include one H2 introduction section\n"
-        "- Use multiple H3 subsections\n"
-        "- Include a conclusion section\n"
-        "- No inline CSS, no JavaScript, no scripts\n"
-        "- Keep title <= 60 chars\n"
-        "- Keep SEO description <= 160 chars\n"
-        "- Ensure Google-safe, human-readable writing\n\n"
-        "Return strict JSON with keys exactly:\n"
-        "title, content, seo_title, seo_description, seo_keywords"
-    )
-
     try:
         client = OpenAI(api_key=api_key, timeout=timeout)
-        response = client.chat.completions.create(
-            model=model,
-            temperature=0.7,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an expert IELTS instructor and SEO content writer. "
-                        "Follow constraints exactly and return JSON only."
-                    ),
-                },
-                {"role": "user", "content": user_prompt},
-            ],
+        correction_note: Optional[str] = None
+        last_validation_error: Optional[str] = None
+
+        for attempt in range(1, max_attempts + 1):
+            user_prompt = _build_user_prompt(
+                topic=topic,
+                keywords=keyword_text,
+                tone=tone_value,
+                correction_note=correction_note,
+            )
+            payload = _request_payload(client=client, model=model, user_prompt=user_prompt)
+            generated = _parse_generated_payload(payload, topic)
+            is_valid, validation_error, word_count = _validate_generated(generated, topic)
+            if is_valid:
+                return generated
+
+            # If short/long content, ask model to expand/rewrite using its own draft as baseline.
+            if "Word count out of range" in validation_error:
+                expansion_prompt = _build_expansion_prompt(
+                    topic=topic,
+                    keywords=keyword_text,
+                    tone=tone_value,
+                    generated=generated,
+                    current_word_count=word_count,
+                )
+                expanded_payload = _request_payload(
+                    client=client,
+                    model=model,
+                    user_prompt=expansion_prompt,
+                )
+                expanded_generated = _parse_generated_payload(expanded_payload, topic)
+                expanded_valid, expanded_error, expanded_wc = _validate_generated(expanded_generated, topic)
+                if expanded_valid:
+                    logger.info(
+                        "AI generation expansion succeeded for topic '%s' (attempt %s, %s words)",
+                        topic,
+                        attempt,
+                        expanded_wc,
+                    )
+                    return expanded_generated
+                validation_error = f"{validation_error} | Expansion attempt failed: {expanded_error}"
+                word_count = expanded_wc
+
+            last_validation_error = validation_error
+            correction_note = (
+                f"Last output issue: {validation_error}\n"
+                f"Previous content word count: {word_count}\n"
+                f"Generate new output within {MIN_WORDS}-{MAX_WORDS} words."
+            )
+            logger.warning(
+                "AI generation retry %s/%s for topic '%s': %s",
+                attempt,
+                max_attempts,
+                topic,
+                validation_error,
+            )
+
+        raise AIGenerationError(
+            f"AI response failed validation after {max_attempts} attempts. "
+            f"Last issue: {last_validation_error or 'Unknown validation error'}"
         )
-        raw_content = response.choices[0].message.content or ""
-        payload = json.loads(raw_content)
     except AuthenticationError as exc:
         logger.exception("OpenAI authentication failed for topic '%s': %s", topic, exc)
         raise AIGenerationError(
             "OpenAI authentication failed (401). Check the active OPENAI_API_KEY in the running server process."
         ) from exc
+    except AIGenerationError:
+        raise
     except Exception as exc:
         logger.exception("AI generation failed for topic '%s': %s", topic, exc)
         raise AIGenerationError("AI generation failed. Please try again.") from exc
-
-    try:
-        generated = AIGeneratedPost(
-            title=_truncate(str(payload["title"]).strip(), 60),
-            content=_clean_html(str(payload["content"])),
-            seo_title=_truncate(str(payload["seo_title"]).strip(), 60),
-            seo_description=_truncate(str(payload["seo_description"]).strip(), 160),
-            seo_keywords=_truncate(str(payload["seo_keywords"]).strip(), 255),
-        )
-    except KeyError as exc:
-        logger.exception("AI payload missing expected fields for topic '%s': %s", topic, exc)
-        raise AIGenerationError("AI response format was invalid. Please try again.") from exc
-
-    if not generated.title or not generated.content:
-        logger.error("AI response missing title/content for topic '%s'", topic)
-        raise AIGenerationError("AI response was incomplete. Please try again.")
-
-    content_lower = generated.content.lower()
-    word_count = _word_count_from_html(generated.content)
-    if "<h2" not in content_lower or "<h3" not in content_lower:
-        logger.error("AI response missing required heading structure for topic '%s'", topic)
-        raise AIGenerationError("AI response missed required heading structure. Please try again.")
-    if "conclusion" not in content_lower:
-        logger.error("AI response missing conclusion section for topic '%s'", topic)
-        raise AIGenerationError("AI response missed a conclusion section. Please try again.")
-    if word_count < 1200 or word_count > 1800:
-        logger.error("AI response out of required word range (%s words) for topic '%s'", word_count, topic)
-        raise AIGenerationError("AI response length was outside 1200-1800 words. Please try again.")
-
-    return generated
