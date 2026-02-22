@@ -85,6 +85,10 @@ class Post(models.Model):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
+
+        if not self.canonical_url and self.slug:
+            site_url = getattr(settings, "SITE_URL", "https://zuuu.uz").rstrip("/")
+            self.canonical_url = f"{site_url}/posts/{self.slug}"
         super().save(*args, **kwargs)
 
     def __str__(self):
