@@ -1,5 +1,5 @@
+'use client';
 import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation'; // Ensure ads reload on navigation
 import { AdSenseConfig } from '../lib/api';
 
 // 1. Fix TypeScript window error
