@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useRef, useCallback } from 'react';
+
+import { useEffect, useRef } from 'react';
 import { AdSenseConfig } from '../lib/api';
 
 declare global {
   interface Window {
-    adsbygoogle: Record<string, unknown>[];
+    adsbygoogle?: unknown[];
   }
 }
 
@@ -14,7 +15,10 @@ interface AdSenseAdProps {
   className?: string;
 }
 
-function getSlotId(config: AdSenseConfig, placement: AdSenseAdProps['placement']): string | undefined {
+function getSlotId(
+  config: AdSenseConfig,
+  placement: AdSenseAdProps['placement']
+): string | undefined {
   switch (placement) {
     case 'homepage':
       return config.homepage_ad_unit_id;
@@ -25,64 +29,86 @@ function getSlotId(config: AdSenseConfig, placement: AdSenseAdProps['placement']
   }
 }
 
-export default function AdSenseAd({ config, placement, className = '' }: AdSenseAdProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const pushed = useRef(false);
-
-  const pushAd = useCallback(() => {
-    if (pushed.current) return;
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-      pushed.current = true;
-    } catch {
-      // AdSense may throw if slot is already filled or blocked
-    }
-  }, []);
+export default function AdSenseAd({
+  config,
+  placement,
+  className = '',
+}: AdSenseAdProps) {
+  const insRef = useRef<HTMLModElement | null>(null);
+  const pushedRef = useRef(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
-    if (pushed.current) return;
     if (!config?.enabled || !config?.publisher_id) return;
 
-    const adUnitId = getSlotId(config, placement);
-    if (!adUnitId) return;
+    const slot = getSlotId(config, placement);
+    if (!slot) return;
 
-    // If the script is already loaded, push immediately
-    if (typeof window !== 'undefined' && window.adsbygoogle) {
-      pushAd();
-      return;
+    const ins = insRef.current;
+    if (!ins) return;
+
+    // already filled by AdSense
+    if (ins.getAttribute('data-adsbygoogle-status') === 'done') return;
+
+    // prevent duplicate push
+    if (pushedRef.current) return;
+
+    function pushAd() {
+      if (pushedRef.current) return;
+      if (!window.adsbygoogle) return;
+
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        pushedRef.current = true;
+      } catch {
+        // ignore duplicate fill / blocked
+      }
     }
 
-    // Otherwise wait for the script to load by observing the <ins> element
-    // Google's script will mutate it when ready
-    const interval = setInterval(() => {
-      if (typeof window !== 'undefined' && window.adsbygoogle) {
-        clearInterval(interval);
-        pushAd();
-      }
-    }, 200);
+    // Lazy load when visible
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        if (e.isIntersecting) {
+          pushAd();
+          observerRef.current?.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
 
-    const timeout = setTimeout(() => clearInterval(interval), 15000);
+    observerRef.current.observe(ins);
 
     return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
+      observerRef.current?.disconnect();
     };
-  }, [config, placement, pushAd]);
+  }, [config, placement]);
 
-  // Don't render anything if disabled or missing config
   if (!config?.enabled || !config?.publisher_id) return null;
 
-  const adUnitId = getSlotId(config, placement);
-  if (!adUnitId) return null;
+  const slot = getSlotId(config, placement);
+  if (!slot) return null;
 
   return (
-    <div ref={containerRef} className={`ad-slot ${className}`}>
-      <span className="ad-label">Advertisement</span>
+    <div
+      className={`adsense-container ${className}`}
+      style={{
+        width: '100%',
+        display: 'block',
+        overflow: 'hidden',
+        textAlign: 'center',
+      }}
+    >
       <ins
+        ref={insRef}
         className="adsbygoogle"
-        style={{ display: 'block', width: '100%', minHeight: '100px' }}
+        style={{
+          display: 'block',
+          width: '100%',
+          minHeight: '120px',
+        }}
         data-ad-client={config.publisher_id}
-        data-ad-slot={adUnitId}
+        data-ad-slot={slot}
         data-ad-format="auto"
         data-full-width-responsive="true"
       />

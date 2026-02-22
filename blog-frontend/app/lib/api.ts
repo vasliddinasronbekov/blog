@@ -77,13 +77,13 @@ export async function getAdSenseSettings(): Promise<AdSenseConfig | null> {
   try {
     const data = await fetchJson(
       `${API_BASE}/adsense-settings/`,
-      { next: { revalidate: 3600 } },
+      { cache: 'no-store' },   // ✅ muhim
       'Failed to load AdSense settings'
-    );
-    return data;
+    )
+    return data
   } catch (error) {
-    console.error('getAdSenseSettings error:', error);
-    return null;
+    console.error('getAdSenseSettings error:', error)
+    return null
   }
 }
 
