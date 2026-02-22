@@ -1,14 +1,12 @@
 
-// /media/gradientvvv/Linux/blog-app/blog-frontend/app/layout.tsx
-
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SessionWrapper from "./components/SessionWrapper";
 import Navbar from './components/Navbar';
 import { getAdSenseSettings } from "./lib/api";
-import AdSenseAd from "./components/AdSenseAd";
 import Script from "next/script";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -19,14 +17,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f9fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0e15" },
+  ],
+};
+
 export const metadata: Metadata = {
   title: "Blog - Share Your Stories",
   description: "A modern glassmorphic blog platform with spatial design aesthetics inspired by iOS 18+ and visionOS",
-  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8f9fa" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0e15" }
-  ],
 };
 
 export default async function RootLayout({
@@ -37,7 +40,11 @@ export default async function RootLayout({
   const adsenseSettings = await getAdSenseSettings();
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
+      <head />
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
+      >
         {adsenseSettings?.enabled && adsenseSettings?.publisher_id && (
           <Script
             async
@@ -46,12 +53,6 @@ export default async function RootLayout({
             crossOrigin="anonymous"
           />
         )}
-      </head>
-      <body
-      
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
-      >
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
             try{
@@ -96,7 +97,6 @@ export default async function RootLayout({
         <SessionWrapper>
           <Navbar />
           {children}
-          {adsenseSettings && <AdSenseAd config={adsenseSettings} placement="homepage" />}
         </SessionWrapper>
       </body>
     </html>

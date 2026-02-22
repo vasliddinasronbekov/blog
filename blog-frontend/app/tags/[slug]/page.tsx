@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getPosts, getTagBySlug } from '../../lib/api';
+import { getPosts, getTagBySlug, getAdSenseSettings } from '../../lib/api';
 import PostArchive from '../../components/PostArchive';
 
 export const revalidate = 60;
@@ -25,7 +25,10 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
     notFound();
   }
 
-  const posts = await getPosts({ tags: tag.id });
+  const [posts, adsenseConfig] = await Promise.all([
+    getPosts({ tags: tag.id }),
+    getAdSenseSettings(),
+  ]);
 
   return (
     <PostArchive
@@ -33,6 +36,7 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
       subtitle={`Explore all posts tagged with #${tag.name}.`}
       posts={posts}
       emptyLabel={`No posts found for #${tag.name}.`}
+      adsenseConfig={adsenseConfig}
     />
   );
 }

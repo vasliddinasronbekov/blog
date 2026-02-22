@@ -1,17 +1,20 @@
 import Link from 'next/link';
 import PostCard from './PostCard';
-import { Post } from '../lib/api';
+import AdSenseAd from './AdSenseAd';
+import { Post, AdSenseConfig } from '../lib/api';
 
 export default function PostArchive({
   title,
   subtitle,
   posts,
   emptyLabel,
+  adsenseConfig,
 }: {
   title: string;
   subtitle: string;
   posts: Post[];
   emptyLabel: string;
+  adsenseConfig?: AdSenseConfig | null;
 }) {
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
@@ -44,6 +47,12 @@ export default function PostArchive({
               <PostCard post={post} featured={index === 0} />
             </div>
           ))}
+        </div>
+      )}
+
+      {adsenseConfig && (
+        <div className="mt-8">
+          <AdSenseAd config={adsenseConfig} placement="homepage" />
         </div>
       )}
     </main>

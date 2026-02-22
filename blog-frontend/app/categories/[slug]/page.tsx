@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getCategoryBySlug, getPosts } from '../../lib/api';
+import { getCategoryBySlug, getPosts, getAdSenseSettings } from '../../lib/api';
 import PostArchive from '../../components/PostArchive';
 
 export const revalidate = 60;
@@ -25,7 +25,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     notFound();
   }
 
-  const posts = await getPosts({ category: category.id });
+  const [posts, adsenseConfig] = await Promise.all([
+    getPosts({ category: category.id }),
+    getAdSenseSettings(),
+  ]);
 
   return (
     <PostArchive
@@ -33,6 +36,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       subtitle={`Browse all posts in ${category.name}.`}
       posts={posts}
       emptyLabel={`No posts found in ${category.name}.`}
+      adsenseConfig={adsenseConfig}
     />
   );
 }

@@ -5,13 +5,16 @@ import { Post } from '../lib/api';
 export default function PostCard({ post, featured = false }: { post: Post; featured?: boolean }) {
   const cardClass = featured ? 'bento-item-featured' : '';
 
+  const imageUrl = post.featured_image_url || post.featured_image;
+  const plainContent = post.content ? post.content.replace(/<[^>]+>/g, '') : '';
+
   return (
     <article className={`glass-card overflow-hidden group layer-2 transition-all duration-300 cursor-pointer ${cardClass}`}>
       {/* Image Container */}
-      {post.featured_image && (
+      {imageUrl && (
         <div className="relative w-full h-48 overflow-hidden">
           <Image 
-            src={post.featured_image} 
+            src={imageUrl} 
             alt={post.title} 
             fill 
             className="object-cover group-hover:scale-110 transition-transform duration-500"
@@ -71,7 +74,7 @@ export default function PostCard({ post, featured = false }: { post: Post; featu
 
         {/* Description */}
         <p className="text-sm muted line-clamp-2 mb-auto">
-          {post.content}
+          {plainContent}
         </p>
 
         {/* Footer */}

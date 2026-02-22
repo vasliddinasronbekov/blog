@@ -55,7 +55,7 @@ export type Post = {
 
 export type PostComment = {
   id: number;
-  author?: { username?: string } | string;
+  author?: string;
   text: string;
   created_at: string;
 };
@@ -74,14 +74,17 @@ async function fetchJson(url: string, init?: RequestInit, fallbackError = 'Reque
 }
 
 export async function getAdSenseSettings(): Promise<AdSenseConfig | null> {
-    try {
-      const data = await fetchJson(`${API_BASE}/adsense-settings/`, { next: { revalidate: 3600 } }, 'AdSense sozlamalari topilmadi');
-      return data;
-    }
-    catch (error) {
-        console.error('getAdSenseSettings xatosi:', error);
-        return null;
-    }
+  try {
+    const data = await fetchJson(
+      `${API_BASE}/adsense-settings/`,
+      { next: { revalidate: 3600 } },
+      'Failed to load AdSense settings'
+    );
+    return data;
+  } catch (error) {
+    console.error('getAdSenseSettings error:', error);
+    return null;
+  }
 }
 
 export async function getPosts(filters?: {
@@ -96,8 +99,10 @@ export async function getPosts(filters?: {
   if (filters?.page) params.set('page', String(filters.page));
   if (filters?.search) params.set('search', filters.search);
 
-  const url = params.toString() ? `${API_BASE}/posts/?${params.toString()}` : `${API_BASE}/posts/`;
-  const data = await fetchJson(url, { next: { revalidate: 60 } }, "Xatolik: Postlarni yuklab bo'lmadi");
+  const url = params.toString()
+    ? `${API_BASE}/posts/?${params.toString()}`
+    : `${API_BASE}/posts/`;
+  const data = await fetchJson(url, { next: { revalidate: 60 } }, 'Failed to load posts');
   return normalizeList<Post>(data);
 }
 
@@ -109,12 +114,12 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
 
     if (!res.ok) {
       if (res.status === 404) return null;
-      throw new Error('Postni yuklashda xatolik');
+      throw new Error('Failed to load post');
     }
 
     return res.json();
   } catch (error) {
-    console.error('getPostBySlug xatosi:', error);
+    console.error('getPostBySlug error:', error);
     return null;
   }
 }
@@ -135,10 +140,14 @@ export async function getRelatedPostsForPost(post: Post, limit = 6): Promise<Pos
 
 export async function getCategories(): Promise<Category[]> {
   try {
-    const data = await fetchJson(`${API_BASE}/categories/`, { cache: 'force-cache' }, "Kategoriyalar topilmadi");
+    const data = await fetchJson(
+      `${API_BASE}/categories/`,
+      { cache: 'force-cache' },
+      'Failed to load categories'
+    );
     return normalizeList<Category>(data);
   } catch (error) {
-    console.error('getCategories xatosi:', error);
+    console.error('getCategories error:', error);
     return [];
   }
 }
@@ -148,22 +157,26 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
     const data = await fetchJson(
       `${API_BASE}/categories/?slug=${encodeURIComponent(slug)}`,
       { next: { revalidate: 300 } },
-      'Kategoriya yuklanmadi'
+      'Failed to load category'
     );
     const categories = normalizeList<Category>(data);
     return categories[0] || null;
   } catch (error) {
-    console.error('getCategoryBySlug xatosi:', error);
+    console.error('getCategoryBySlug error:', error);
     return null;
   }
 }
 
 export async function getTags(): Promise<Tag[]> {
   try {
-    const data = await fetchJson(`${API_BASE}/tags/`, { next: { revalidate: 300 } }, 'Taglar yuklanmadi');
+    const data = await fetchJson(
+      `${API_BASE}/tags/`,
+      { next: { revalidate: 300 } },
+      'Failed to load tags'
+    );
     return normalizeList<Tag>(data);
   } catch (error) {
-    console.error('getTags xatosi:', error);
+    console.error('getTags error:', error);
     return [];
   }
 }
@@ -173,12 +186,12 @@ export async function getTagBySlug(slug: string): Promise<Tag | null> {
     const data = await fetchJson(
       `${API_BASE}/tags/?slug=${encodeURIComponent(slug)}`,
       { next: { revalidate: 300 } },
-      'Tag yuklanmadi'
+      'Failed to load tag'
     );
     const tags = normalizeList<Tag>(data);
     return tags[0] || null;
   } catch (error) {
-    console.error('getTagBySlug xatosi:', error);
+    console.error('getTagBySlug error:', error);
     return null;
   }
 }
@@ -213,8 +226,8 @@ export async function createPost(
   });
 
   if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(JSON.stringify(errorData) || 'Post yaratib bo‘lmadi');
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData ? JSON.stringify(errorData) : "Failed to create post");
   }
 
   return res.json();
@@ -230,6 +243,6 @@ export async function addComment(postId: number, text: string, token: string) {
     body: JSON.stringify({ post: postId, text }),
   });
 
-  if (!res.ok) throw new Error("Izoh qoldirib bo'lmadi");
+  if (!res.ok) throw new Error("Failed to add comment");
   return res.json();
 }
