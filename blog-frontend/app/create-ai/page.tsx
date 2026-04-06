@@ -1,15 +1,24 @@
 "use client";
 import { useState } from "react";
 
+interface GeneratedPost {
+  title: string;
+  content: string;
+  seo_title: string;
+  seo_description: string;
+  seo_keywords: string;
+  tags: string[];
+}
+
 export default function CreateAIPostPage() {
   const [topic, setTopic] = useState("");
   const [keywords, setKeywords] = useState("");
   const [tone, setTone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<GeneratedPost | null>(null);
 
-  async function handleGenerate(e) {
+  async function handleGenerate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -25,7 +34,7 @@ export default function CreateAIPostPage() {
       if (!res.ok) throw new Error(data.error || "Generation failed");
       setResult(data);
     } catch (err) {
-      setError(err.message || "Unknown error");
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
