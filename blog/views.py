@@ -106,23 +106,29 @@ class TaskStatusView(APIView):
 
     def get(self, request, task_id):
         task_result = AsyncResult(task_id)
-        
+        status = task_result.state
+
         response_data = {
             "task_id": task_id,
-            "status": task_result.status,
+            "status": status,
         }
-        
-        if task_result.state == "PENDING":
-            response_data["message"] = "Task is pending..."
-        elif task_result.state == "PROGRESS":
-            response_data["message"] = "Task is in progress..."
-        elif task_result.state == "SUCCESS":
+
+        if status in ("PENDING", "RECEIVED"):
+            response_data["message"] = "Task is pending and waiting for a worker."
+        elif status in ("STARTED", "PROGRESS", "RETRY"):
+            response_data["message"] = str(task_result.info or "Task is running.")
+        elif status == "SUCCESS":
             response_data["result"] = task_result.result
             response_data["message"] = "Task completed successfully!"
-        elif task_result.state == "FAILURE":
+        elif status == "FAILURE":
             response_data["error"] = str(task_result.info)
             response_data["message"] = "Task failed."
+        elif status == "REVOKED":
+            response_data["error"] = str(task_result.info or "Task was revoked.")
+            response_data["message"] = "Task was revoked."
         else:
-            response_data["message"] = f"Task is {task_result.state.lower()}."
-            
-        return Response(response_data)
+            response_data["message"] = f"Task is {status.lower()}."
+
+        response = Response(response_data)
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response

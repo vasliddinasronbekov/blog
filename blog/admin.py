@@ -369,6 +369,8 @@ class PostAdmin(admin.ModelAdmin):
       // Step 1: Start the async task
       var response = await fetch(buttonEl.dataset.url, {
         method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken')
@@ -414,16 +416,24 @@ class PostAdmin(admin.ModelAdmin):
       var pollInterval = 2000; // 2 seconds
       var maxPolls = 60; // Max 2 minutes
       var pollCount = 0;
+      var pollFailed = false;
 
       while (pollCount < maxPolls) {
         try {
           var statusResponse = await fetch('/api/task-status/' + taskId + '/', {
             method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
             headers: {
-              'X-CSRFToken': getCookie('csrftoken')
+              'X-CSRFToken': getCookie('csrftoken'),
+              'Accept': 'application/json'
             },
             signal: controller.signal
           });
+
+          if (!statusResponse.ok) {
+            throw new Error('Status check failed with HTTP ' + statusResponse.status);
+          }
 
           var statusText = await statusResponse.text();
           var statusData = {};
@@ -433,8 +443,16 @@ class PostAdmin(admin.ModelAdmin):
             statusData = {};
           }
 
-          if (statusData.status === 'SUCCESS') {
-            // Task completed successfully
+          var taskState = statusData.status || 'UNKNOWN';
+          var isRunning = [
+            'PENDING',
+            'RECEIVED',
+            'STARTED',
+            'RETRY',
+            'PROGRESS'
+          ].includes(taskState);
+
+          if (taskState === 'SUCCESS') {
             var result = statusData.result;
             if (!result || !result.success) {
               throw new Error(result ? result.message || 'Generation failed.' : 'No result data.');
@@ -445,15 +463,13 @@ class PostAdmin(admin.ModelAdmin):
               'Applying generated values to form...'
             ]);
 
-            // Populate form fields with generated content
             setFieldValue('id_title', result.title || '');
             setFieldValue('id_content', result.content || '');
             setFieldValue('id_seo_title', result.seo_title || '');
             setFieldValue('id_seo_description', result.seo_description || '');
             setFieldValue('id_seo_keywords', result.seo_keywords || '');
             setFieldValue('id_ai_generated_tags', JSON.stringify(result.tags || []));
-            
-            // Ensure AI mode is selected
+
             var aiModeRadio = document.querySelector('input[name="generation_mode"][value="ai"]');
             if (aiModeRadio) {
               aiModeRadio.checked = true;
@@ -470,13 +486,12 @@ class PostAdmin(admin.ModelAdmin):
               tagLine,
               'Next: review and click Save.'
             ]);
-
             break;
 
-          } else if (statusData.status === 'FAILURE') {
-            throw new Error(statusData.error || 'AI generation failed.');
-          } else if (statusData.status === 'PENDING' || statusData.status === 'PROGRESS') {
-            // Still running, continue polling
+          } else if (taskState === 'FAILURE' || taskState === 'REVOKED') {
+            throw new Error(statusData.error || statusData.message || 'AI generation failed.');
+
+          } else if (isRunning) {
             setStatus('pending', [
               'AI generation in progress...',
               statusData.message || 'Please wait...',
@@ -486,20 +501,90 @@ class PostAdmin(admin.ModelAdmin):
             pollCount++;
             await new Promise(resolve => setTimeout(resolve, pollInterval));
           } else {
-            // Unknown status
-            throw new Error('Unknown task status: ' + statusData.status);
+            throw new Error('Unknown task status: ' + taskState + '.');
           }
 
         } catch (pollError) {
           if (pollError.name === 'AbortError') {
             throw new Error('Polling timed out after 3 minutes.');
           }
-          throw pollError;
+          pollFailed = true;
+          setStatus('pending', [
+            'Task status check failed.',
+            (pollError && pollError.message) ? pollError.message : 'Falling back to synchronous generation.'
+          ]);
+          break;
         }
       }
 
-      if (pollCount >= maxPolls) {
-        throw new Error('Generation timed out after maximum polling attempts.');
+      if (pollCount >= maxPolls || pollFailed) {
+        setStatus('pending', [
+          'Async task did not complete in time.',
+          'Falling back to synchronous AI generation...'
+        ]);
+        
+        try {
+          var fallbackResponse = await fetch(buttonEl.dataset.url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+              topic: topic,
+              keywords: keywords,
+              tone: tone,
+              sync: true
+            }),
+          });
+
+          var fallbackText = await fallbackResponse.text();
+          var fallbackData = {};
+          try {
+            fallbackData = fallbackText ? JSON.parse(fallbackText) : {};
+          } catch (e) {
+            fallbackData = {};
+          }
+
+          if (!fallbackResponse.ok) {
+            var detail = fallbackData.error || 'Fallback generation failed.';
+            var hint = fallbackData.hint ? 'Hint: ' + fallbackData.hint : '';
+            throw new Error('HTTP ' + fallbackResponse.status + ': ' + detail + (hint ? ' | ' + hint : ''));
+          }
+
+          setFieldValue('id_title', fallbackData.title || '');
+          setFieldValue('id_content', fallbackData.content || '');
+          setFieldValue('id_seo_title', fallbackData.seo_title || '');
+          setFieldValue('id_seo_description', fallbackData.seo_description || '');
+          setFieldValue('id_seo_keywords', fallbackData.seo_keywords || '');
+          setFieldValue('id_ai_generated_tags', JSON.stringify(fallbackData.tags || []));
+
+          var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+          var tagLine = (fallbackData.tags && fallbackData.tags.length)
+            ? ('Suggested tags: ' + fallbackData.tags.map(function (tag) { return '#' + tag; }).join(', '))
+            : 'Suggested tags: none';
+          setStatus('success', [
+            'Fallback generation completed in ' + seconds + 's.',
+            'Updated fields: title, content, SEO title, SEO description, SEO keywords.',
+            tagLine,
+            'Next: review and click Save.'
+          ]);
+        } catch (fallbackError) {
+          if (fallbackError && fallbackError.name === 'AbortError') {
+            setStatus('error', [
+              'Fallback request timed out.',
+              'Fix: check network and retry.'
+            ]);
+          } else {
+            setStatus('error', [
+              'Fallback generation failed.',
+              (fallbackError && fallbackError.message) ? fallbackError.message : 'Unknown error.'
+            ]);
+          }
+        }
+        break;
       }
 
     } catch (error) {
@@ -555,6 +640,7 @@ class PostAdmin(admin.ModelAdmin):
         topic = str(payload.get("topic") or "").strip()
         keywords = str(payload.get("keywords") or "").strip() or None
         tone = str(payload.get("tone") or "").strip() or None
+        use_sync = bool(payload.get("sync"))
 
         if not topic:
             return JsonResponse(
@@ -574,6 +660,40 @@ class PostAdmin(admin.ModelAdmin):
                 },
                 status=400,
             )
+
+        if use_sync:
+            try:
+                generated = generate_post_with_ai(topic=topic, keywords=keywords, tone=tone)
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "title": generated.title,
+                        "content": generated.content,
+                        "seo_title": generated.seo_title,
+                        "seo_description": generated.seo_description,
+                        "seo_keywords": generated.seo_keywords,
+                        "tags": generated.tags,
+                        "message": "AI content generated synchronously.",
+                    },
+                    status=200,
+                )
+            except AIGenerationError as exc:
+                return JsonResponse(
+                    {
+                        "error": str(exc),
+                        "hint": "Refine topic/keywords and retry. Also verify OPENAI_API_KEY and model access.",
+                    },
+                    status=400,
+                )
+            except Exception:
+                logger.exception("Unexpected error during synchronous AI generation.")
+                return JsonResponse(
+                    {
+                        "error": "Unexpected server error during synchronous AI generation.",
+                        "hint": "Check backend logs and OpenAI/network configuration.",
+                    },
+                    status=500,
+                )
 
         try:
             from .tasks import generate_post_async
