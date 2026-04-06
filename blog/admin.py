@@ -354,18 +354,19 @@ class PostAdmin(admin.ModelAdmin):
     var startedAt = Date.now();
     var originalText = buttonEl.textContent;
     buttonEl.disabled = true;
-    buttonEl.textContent = 'Generating...';
+    buttonEl.textContent = 'Starting...';
     buttonEl.setAttribute('aria-busy', 'true');
 
     setStatus('pending', [
       'Validating input...',
-      'Sending request to backend AI endpoint...'
+      'Starting AI generation task...'
     ]);
 
     var controller = new AbortController();
-    var timeoutId = setTimeout(function () { controller.abort(); }, 180000);
+    var timeoutId = setTimeout(function () { controller.abort(); }, 30000); // 30s timeout for initial request
 
     try {
+      // Step 1: Start the async task
       var response = await fetch(buttonEl.dataset.url, {
         method: 'POST',
         headers: {
@@ -380,11 +381,6 @@ class PostAdmin(admin.ModelAdmin):
         signal: controller.signal
       });
 
-      setStatus('pending', [
-        'Backend responded.',
-        'Parsing AI output...'
-      ]);
-
       var text = await response.text();
       var data = {};
       try {
@@ -394,38 +390,123 @@ class PostAdmin(admin.ModelAdmin):
       }
 
       if (!response.ok) {
-        var detail = data.error || 'Generation failed.';
+        var detail = data.error || 'Failed to start generation.';
         var hint = data.hint ? 'Hint: ' + data.hint : '';
         throw new Error('HTTP ' + response.status + ': ' + detail + (hint ? ' | ' + hint : ''));
       }
 
+      if (!data.task_id) {
+        throw new Error('No task ID received. Check Celery/Redis configuration.');
+      }
+
       setStatus('pending', [
-        'AI content received.',
-        'Applying generated values to form...'
+        'AI generation task started.',
+        'Task ID: ' + data.task_id,
+        'Polling for completion...'
       ]);
 
-      setFieldValue('id_title', data.title || '');
-      setFieldValue('id_content', data.content || '');
-      setFieldValue('id_seo_title', data.seo_title || '');
-      setFieldValue('id_seo_description', data.seo_description || '');
-      setFieldValue('id_seo_keywords', data.seo_keywords || '');
-      setFieldValue('id_ai_generated_tags', JSON.stringify(data.tags || []));
+      clearTimeout(timeoutId);
+      controller = new AbortController();
+      timeoutId = setTimeout(function () { controller.abort(); }, 180000); // 3min timeout for polling
 
-      var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-      var tagLine = (data.tags && data.tags.length)
-        ? ('Suggested tags: ' + data.tags.map(function (tag) { return '#' + tag; }).join(', '))
-        : 'Suggested tags: none';
-      setStatus('success', [
-        'Generation completed in ' + seconds + 's.',
-        'Updated fields: title, content, SEO title, SEO description, SEO keywords.',
-        tagLine,
-        'Next: review and click Save.'
-      ]);
+      // Step 2: Poll for task completion
+      var taskId = data.task_id;
+      var pollInterval = 2000; // 2 seconds
+      var maxPolls = 60; // Max 2 minutes
+      var pollCount = 0;
+
+      while (pollCount < maxPolls) {
+        try {
+          var statusResponse = await fetch('/api/task-status/' + taskId + '/', {
+            method: 'GET',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            signal: controller.signal
+          });
+
+          var statusText = await statusResponse.text();
+          var statusData = {};
+          try {
+            statusData = statusText ? JSON.parse(statusText) : {};
+          } catch (e) {
+            statusData = {};
+          }
+
+          if (statusData.status === 'SUCCESS') {
+            // Task completed successfully
+            var result = statusData.result;
+            if (!result || !result.success) {
+              throw new Error(result ? result.message || 'Generation failed.' : 'No result data.');
+            }
+
+            setStatus('pending', [
+              'AI content received.',
+              'Applying generated values to form...'
+            ]);
+
+            // Populate form fields with generated content
+            setFieldValue('id_title', result.title || '');
+            setFieldValue('id_content', result.content || '');
+            setFieldValue('id_seo_title', result.seo_title || '');
+            setFieldValue('id_seo_description', result.seo_description || '');
+            setFieldValue('id_seo_keywords', result.seo_keywords || '');
+            setFieldValue('id_ai_generated_tags', JSON.stringify(result.tags || []));
+            
+            // Ensure AI mode is selected
+            var aiModeRadio = document.querySelector('input[name="generation_mode"][value="ai"]');
+            if (aiModeRadio) {
+              aiModeRadio.checked = true;
+              aiModeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+            var tagLine = (result.tags && result.tags.length)
+              ? ('Suggested tags: ' + result.tags.map(function (tag) { return '#' + tag; }).join(', '))
+              : 'Suggested tags: none';
+            setStatus('success', [
+              'Generation completed in ' + seconds + 's.',
+              'Updated fields: title, content, SEO title, SEO description, SEO keywords.',
+              tagLine,
+              'Next: review and click Save.'
+            ]);
+
+            break;
+
+          } else if (statusData.status === 'FAILURE') {
+            throw new Error(statusData.error || 'AI generation failed.');
+          } else if (statusData.status === 'PENDING' || statusData.status === 'PROGRESS') {
+            // Still running, continue polling
+            setStatus('pending', [
+              'AI generation in progress...',
+              statusData.message || 'Please wait...',
+              'Elapsed: ' + ((Date.now() - startedAt) / 1000).toFixed(0) + 's'
+            ]);
+
+            pollCount++;
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+          } else {
+            // Unknown status
+            throw new Error('Unknown task status: ' + statusData.status);
+          }
+
+        } catch (pollError) {
+          if (pollError.name === 'AbortError') {
+            throw new Error('Polling timed out after 3 minutes.');
+          }
+          throw pollError;
+        }
+      }
+
+      if (pollCount >= maxPolls) {
+        throw new Error('Generation timed out after maximum polling attempts.');
+      }
+
     } catch (error) {
       if (error && error.name === 'AbortError') {
         setStatus('error', [
-          'Generation timed out after 180s.',
-          'Fix: retry with shorter topic/keywords.'
+          'Request timed out.',
+          'Fix: check network and retry.'
         ]);
       } else {
         setStatus('error', [
