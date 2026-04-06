@@ -31,6 +31,9 @@ urlpatterns = [
     # AdSense Settings (read-only)
     path('api/adsense-settings/', AdSenseSettingsView.as_view(), name='adsense_settings'),
     
+    # Task status for async operations
+    path('api/task-status/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
+    
     # REST Framework login/logout (brauzerda test qilish uchun)
     path('api-auth/', include('rest_framework.urls')),
 ]

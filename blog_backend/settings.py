@@ -117,3 +117,13 @@ OPENAI_GENERATION_MAX_ATTEMPTS = int(os.getenv("OPENAI_GENERATION_MAX_ATTEMPTS",
 
 # Site URL used for canonical sitemap links
 SITE_URL = os.getenv("SITE_URL", "https://zuuu.uz")
+# Celery Configuration
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes hard limit
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit (allows cleanup)

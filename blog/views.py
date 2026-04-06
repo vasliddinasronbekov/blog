@@ -2,6 +2,9 @@ from rest_framework import viewsets, filters, permissions, generics
 from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.http import HttpResponse
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from celery.result import AsyncResult
 from .models import Category, Post, Comment, AdSenseSettings, Tag
 from .serializers import (
     CategorySerializer,

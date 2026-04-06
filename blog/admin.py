@@ -495,36 +495,34 @@ class PostAdmin(admin.ModelAdmin):
             )
 
         try:
-            generated = generate_post_with_ai(topic=topic, keywords=keywords, tone=tone)
-        except AIGenerationError as exc:
+            from .tasks import generate_post_async
+            
+            # Dispatch async task
+            task = generate_post_async.delay(
+                topic=topic,
+                keywords=keywords,
+                tone=tone,
+                category_id=payload.get("category_id"),
+                author_id=request.user.id if request.user.is_authenticated else None,
+            )
+            
             return JsonResponse(
                 {
-                    "error": str(exc),
-                    "hint": "Refine topic/keywords and retry. Also verify OPENAI_API_KEY and model access.",
+                    "success": True,
+                    "task_id": task.id,
+                    "message": "Post generation started in background. Check status for completion.",
                 },
-                status=400,
+                status=202,
             )
         except Exception:
             logger.exception("Unexpected error in admin AI generation endpoint.")
             return JsonResponse(
                 {
-                    "error": "Unexpected server error during AI generation.",
-                    "hint": "Check backend logs and OpenAI/network configuration.",
+                    "error": "Failed to start post generation.",
+                    "hint": "Ensure Celery and Redis are running. Check backend logs.",
                 },
                 status=500,
             )
-
-        return JsonResponse(
-            {
-                "title": generated.title,
-                "content": generated.content,
-                "seo_title": generated.seo_title,
-                "seo_description": generated.seo_description,
-                "seo_keywords": generated.seo_keywords,
-                "tags": generated.tags,
-            },
-            status=200,
-        )
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
