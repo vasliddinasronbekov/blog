@@ -88,6 +88,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/signin",
   },
+  // CSRF protection configuration for production deployments
+  trustHost: true,
   // .env.local faylida AUTH_SECRET=... bo'lishi shart
   secret: process.env.AUTH_SECRET,
 });
