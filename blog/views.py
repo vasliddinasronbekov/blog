@@ -96,3 +96,33 @@ def sitemap_xml(request):
     domain = getattr(settings, "SITE_URL", "https://zuuu.uz")
     xml_content = build_sitemap_xml(domain=domain)
     return HttpResponse(xml_content, content_type="application/xml")
+
+
+class TaskStatusView(APIView):
+    """
+    Check the status of an async Celery task.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, task_id):
+        task_result = AsyncResult(task_id)
+        
+        response_data = {
+            "task_id": task_id,
+            "status": task_result.status,
+        }
+        
+        if task_result.state == "PENDING":
+            response_data["message"] = "Task is pending..."
+        elif task_result.state == "PROGRESS":
+            response_data["message"] = "Task is in progress..."
+        elif task_result.state == "SUCCESS":
+            response_data["result"] = task_result.result
+            response_data["message"] = "Task completed successfully!"
+        elif task_result.state == "FAILURE":
+            response_data["error"] = str(task_result.info)
+            response_data["message"] = "Task failed."
+        else:
+            response_data["message"] = f"Task is {task_result.state.lower()}."
+            
+        return Response(response_data)

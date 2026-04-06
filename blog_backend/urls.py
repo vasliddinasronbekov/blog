@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
-from blog.views import CategoryViewSet, PostViewSet, CommentViewSet, RegisterView, AdSenseSettingsView, TagViewSet, sitemap_xml
+from blog.views import CategoryViewSet, PostViewSet, CommentViewSet, RegisterView, AdSenseSettingsView, TagViewSet, sitemap_xml, TaskStatusView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
