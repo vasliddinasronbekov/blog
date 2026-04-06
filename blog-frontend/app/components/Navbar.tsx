@@ -6,10 +6,9 @@
 
 
 import { useSession, signOut } from "next-auth/react";
-
 import Link from 'next/link';
-
 import { useEffect, useState, useRef } from 'react';
+import { FiSun, FiMoon, FiMonitor, FiMenu, FiX, FiFeather } from 'react-icons/fi';
 
 
 
@@ -45,7 +44,7 @@ export default function Navbar() {
 
   const mobilePanelRef = useRef<HTMLDivElement | null>(null);
 
-
+  const themeIcon = theme === 'system' ? <FiMonitor className="h-5 w-5" /> : theme === 'dark' ? <FiMoon className="h-5 w-5" /> : <FiSun className="h-5 w-5" />;
 
   function applyMode(mode: Theme) {
 
@@ -152,9 +151,11 @@ export default function Navbar() {
 
         <div className="flex items-center gap-2">
 
-          <Link href="/" className="text-xl font-black tracking-tight" style={{ color: 'var(--accent)' }}>
+          <Link href="/" className="flex items-center gap-2 text-xl font-black tracking-tight" style={{ color: 'var(--accent)' }}>
 
-            ✨ Blog
+            <FiFeather className="h-5 w-5" aria-hidden="true" />
+
+            <span>Blog</span>
 
           </Link>
 
@@ -174,7 +175,7 @@ export default function Navbar() {
 
             <>
 
-              <Link href="/create" className="btn-primary">✍️ Create Post</Link>
+              <Link href="/create" className="btn-primary">Create Post</Link>
 
               <button
 
@@ -184,9 +185,13 @@ export default function Navbar() {
 
                 aria-label="Toggle theme"
 
+                title="Toggle theme"
+
               >
 
-                {theme === 'system' ? 'Default⚙️' : theme === 'dark' ? '🌙' : '☀️'}
+                {themeIcon}
+
+                <span className="sr-only">Toggle theme</span>
 
               </button>
 
@@ -220,9 +225,13 @@ export default function Navbar() {
 
                 aria-label="Toggle theme"
 
+                title="Toggle theme"
+
               >
 
-                {theme === 'system' ? 'Default🌙' : theme === 'dark' ? '🌙' : '☀️'}
+                {themeIcon}
+
+                <span className="sr-only">Toggle theme</span>
 
               </button>
 
@@ -246,9 +255,13 @@ export default function Navbar() {
 
             aria-label="Toggle theme"
 
+            title="Toggle theme"
+
           >
 
-            {theme === 'system' ? 'Default🌙' : theme === 'dark' ? '🌙' : '☀️'}
+            {themeIcon}
+
+            <span className="sr-only">Toggle theme</span>
 
           </button>
 
@@ -260,9 +273,13 @@ export default function Navbar() {
 
             aria-label="Toggle menu"
 
+            title="Toggle menu"
+
           >
 
-            {mobileOpen ? '✕' : '☰'}
+            {mobileOpen ? <FiX className="h-5 w-5" /> : <FiMenu className="h-5 w-5" />}
+
+            <span className="sr-only">Toggle navigation</span>
 
           </button>
 

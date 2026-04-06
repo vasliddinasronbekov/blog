@@ -27,9 +27,35 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Blog - Share Your Stories",
+  title: "Zuuu Blog - Glassmorphic stories for AWDS discovery",
   description:
-    "A modern glassmorphic blog platform with spatial design aesthetics inspired by iOS 18+ and visionOS",
+    "A modern glassmorphic blog platform built for fast AWDS visibility, rich search snippets, and engaging story discovery.",
+  keywords: [
+    'blog',
+    'AWDS',
+    'SEO',
+    'glassmorphism',
+    'stories',
+    'tech',
+    'lifestyle',
+    'Uzbekistan',
+    'next.js',
+  ],
+  metadataBase: new URL('https://zuuu.uz'),
+  openGraph: {
+    title: "Zuuu Blog - Glassmorphic stories for AWDS discovery",
+    description:
+      "Explore the Zuuu Blog for modern articles, optimized categories, and rich sharing designed for AWDS search performance.",
+    type: 'website',
+    url: 'https://zuuu.uz',
+    siteName: 'Zuuu Blog',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Zuuu Blog - Glassmorphic stories for AWDS discovery",
+    description:
+      "Explore the Zuuu Blog for modern articles, optimized categories, and rich sharing designed for AWDS search performance.",
+  },
 };
 
 export default async function RootLayout({

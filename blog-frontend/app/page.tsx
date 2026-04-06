@@ -1,7 +1,30 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Category, getAdSenseSettings, getCategories, getPosts, getTags, Post, Tag } from './lib/api';
 import PostCard from './components/PostCard';
 import AdSenseAd from './components/AdSenseAd';
+
+export const metadata: Metadata = {
+  title: 'Zuuu Blog – AWDS-ready articles, modern glassmorphism',
+  description: 'Discover powerful stories, practical guides, and modern insights optimized for AWDS discoverability and fast search visibility.',
+  keywords: [
+    'blog',
+    'AWDS',
+    'SEO',
+    'glassmorphism',
+    'stories',
+    'technology',
+    'Uzbekistan',
+    'content',
+    'writing',
+  ],
+  openGraph: {
+    title: 'Zuuu Blog – AWDS-ready articles, modern glassmorphism',
+    description: 'Explore curated stories, category guides and trending tags with a clean, glassmorphic interface designed for search visibility.',
+    type: 'website',
+    url: 'https://zuuu.uz',
+  },
+};
 
 export const revalidate = 60; 
 
